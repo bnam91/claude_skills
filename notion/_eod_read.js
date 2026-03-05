@@ -32,9 +32,23 @@ async function readCallout(name, calloutId) {
       const checked = b.to_do?.checked ?? false;
       if (checked) done++;
       console.log(`  ${checked ? '✅' : '⬜'} ${getText(b)}`);
+      if (b.has_children) {
+        const subs = await getChildren(b.id);
+        for (const sub of subs) {
+          const text = getText(sub);
+          if (text && text.startsWith('👉')) console.log(`      [현빈코멘트] ${text}`);
+        }
+      }
     } else {
       const text = getText(b);
       if (text) console.log(`  📌 ${text}`);
+      if (b.has_children) {
+        const subs = await getChildren(b.id);
+        for (const sub of subs) {
+          const text = getText(sub);
+          if (text && text.startsWith('👉')) console.log(`      [현빈코멘트] ${text}`);
+        }
+      }
     }
   }
   console.log(`  → 완료 ${done}/${total}`);

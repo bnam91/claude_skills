@@ -184,7 +184,7 @@ def apply_inline_styles(text):
 
 def convert_all():
     service = get_service()
-    sheet_name = get_first_sheet_name(service)
+    sheet_name = sys.argv[1] if len(sys.argv) > 1 else get_first_sheet_name(service)
     print(f"시트 이름: {sheet_name}\n")
 
     # 변수 값 읽기

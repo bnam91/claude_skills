@@ -7,10 +7,11 @@ from googleapiclient.discovery import build
 SPREADSHEET_ID = "1x7cj51TufSmJq-2iJjKdMIL8y-SnD0yJH-0KQxS-X74"
 
 cell = sys.argv[1]
+sheet_arg = sys.argv[2] if len(sys.argv) > 2 else None
 creds = auth.get_credentials()
 svc = build("sheets", "v4", credentials=creds)
 meta = svc.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
-sheet = meta["sheets"][0]["properties"]["title"]
+sheet = sheet_arg if sheet_arg else meta["sheets"][0]["properties"]["title"]
 res = svc.spreadsheets().values().get(
     spreadsheetId=SPREADSHEET_ID, range=f"{sheet}!{cell}"
 ).execute()
