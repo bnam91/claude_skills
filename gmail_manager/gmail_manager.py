@@ -40,12 +40,12 @@ SCOPES = [
 
 
 def load_config():
-    with open(CONFIG_FILE) as f:
+    with open(CONFIG_FILE, encoding="utf-8") as f:
         return json.load(f)
 
 
 def save_config(config):
-    with open(CONFIG_FILE, "w") as f:
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2, ensure_ascii=False)
 
 
