@@ -1,3 +1,10 @@
 {
-  "api_key": "secret_여기에_노션_API_키_입력"
+  "api_key": "secret_여기에_노션_API_키_입력",
+  "my_task_toggle_url": "https://www.notion.so/내_업무요청_토글_URL",
+  "colleagues": [
+    {
+      "name": "동료이름",
+      "task_toggle_url": "https://www.notion.so/동료_업무요청_토글_URL"
+    }
+  ]
 }

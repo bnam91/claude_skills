@@ -7,15 +7,45 @@ import { readFileSync } from 'fs';
 import path from 'path';
 import os from 'os';
 
-// API 키 로드
-function getApiKey() {
+// 설정 로드
+function loadConfig() {
   const configPath = path.join(os.homedir(), 'Documents/claude_skills/notion_manager/config.json');
   try {
     const config = JSON.parse(readFileSync(configPath, 'utf8'));
-    return config.api_key;
+
+    // 필수 항목 체크
+    const missing = [];
+    if (!config.api_key || config.api_key.startsWith('secret_여기에')) missing.push('api_key');
+    if (!config.my_task_toggle_url || config.my_task_toggle_url.includes('내_업무요청')) missing.push('my_task_toggle_url (내 업무요청 토글 URL)');
+    if (!config.colleagues?.length || config.colleagues[0].task_toggle_url.includes('동료_업무요청')) missing.push('colleagues (동료 업무요청 토글 URL)');
+
+    if (missing.length > 0) {
+      console.log('⚠️  notion_manager 초기 설정이 필요해요.\n');
+      console.log('📄 config.json 경로:', configPath);
+      console.log('\n설정 방법:');
+      console.log('1. config.example.json → config.json 으로 복사');
+      console.log('2. 아래 항목들을 Notion URL로 채워줘:\n');
+      missing.forEach(m => console.log(`   - ${m}`));
+      console.log('\nURL은 Notion 페이지를 열고 우측 상단 "공유" → "링크 복사"로 가져오면 돼.');
+      process.exit(0);
+    }
+
+    return config;
   } catch {
-    throw new Error(`config.json 없음. ${configPath} 에 API 키를 설정해줘.`);
+    const configPath2 = path.join(os.homedir(), 'Documents/claude_skills/notion_manager/config.json');
+    console.log('⚠️  config.json 파일이 없어요.\n');
+    console.log('설정 방법:');
+    console.log(`1. config.example.json → ${configPath2} 으로 복사`);
+    console.log('2. api_key, my_task_toggle_url, colleagues 항목 입력');
+    console.log('\nNotion API 키 발급: https://www.notion.so/my-integrations');
+    process.exit(0);
   }
+}
+
+const CONFIG = loadConfig();
+
+function getApiKey() {
+  return CONFIG.api_key;
 }
 
 const HEADERS = {
