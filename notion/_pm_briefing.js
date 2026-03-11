@@ -1,73 +1,358 @@
-import { getChildren, deleteBlock, appendBlocks } from './notion_api.js';
+/**
+ * _pm_briefing.js
+ * 브리핑 DB 초안 작성 + 실제 콜아웃 업무 전송 (2단계 통합)
+ * 실행: node _pm_briefing.js --pm gg|cc
+ */
+import { queryDatabase, getChildren, deleteBlock, appendBlocks, createPage, getText } from './notion_api.js';
 
-const BRIEFING_BLOCK = '317111a57788806d8934ed70df847097';
+// ── CLI 인자 ─────────────────────────────────────────────
+const pmArg = process.argv.includes('--pm') ? process.argv[process.argv.indexOf('--pm') + 1] : 'gg';
+const PM = pmArg.toLowerCase();
+if (!['gg', 'cc'].includes(PM)) { console.error('--pm gg 또는 --pm cc 로 지정하세요'); process.exit(1); }
+const JSON_MODE = process.argv.includes('--json');
+const ASSIGN_IDX = process.argv.indexOf('--assign');
+const ASSIGN_DATA = ASSIGN_IDX !== -1 ? JSON.parse(process.argv[ASSIGN_IDX + 1]) : null;
 
-const existing = await getChildren(BRIEFING_BLOCK);
-for (const b of existing) await deleteBlock(b.id);
-console.log(`🗑️  기존 블록 ${existing.length}개 삭제`);
+// ── 날짜 / D-day ─────────────────────────────────────────
+const now = new Date();
+const TODAY_LABEL = `${now.getMonth() + 1}.${now.getDate()}`;
+const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
+const YESTERDAY_LABEL = `${yesterday.getMonth() + 1}.${yesterday.getDate()}`;
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+const TODAY_DAY = WEEKDAYS[now.getDay()];
 
-const blocks = [
-  { object: 'block', type: 'heading_2', heading_2: { rich_text: [{ type: 'text', text: { content: '📋 3.3 (화) PM:GG 브리핑 — D-17' } }] } },
+// ── PM별 설정 ────────────────────────────────────────────
+const CONFIG = {
+  gg: {
+    label: 'GG',
+    projectDbId: '2f6111a5778881ceaf1be4e73f6644ea',
+    briefingDbId: '318111a57788804ba081cb8ae05707ae',
+    launchDate: '2026-03-20',
+    titleField: 'TASK',
+    statusField: '상태',
+    priorityField: '우선순위',
+    statusType: 'status',   // status vs select
+    members: [
+      { name: '현빈02', calloutId: '2f1111a577888127951bc2b17188efff', role: 'blocker+p1' },
+      { name: '지혜',   calloutId: '2f1111a5778881e0b79eec85bbc540c5', role: 'today' },
+    ],
+    jihyeCalloutId: '2f1111a5778881e0b79eec85bbc540c5',
+  },
+  cc: {
+    label: 'CC',
+    projectDbId: '31c111a5778881a89626ceef93de198b',
+    briefingDbId: '31c111a57788814babddf63dad42844e',
+    launchDate: '2026-04-14',
+    titleField: '업무',
+    statusField: '4_상태',
+    priorityField: '1_우선순위',
+    statusType: 'select',
+    members: [
+      { name: '수지',   calloutId: '2e6111a5778880a6a2f7cfca611ea5b7', role: 'inprog+p1' },
+      { name: '현빈',   calloutId: '8bcea4ed47cb46ae90d7dfa888e09c16', role: 'blocker' },
+    ],
+    jihyeCalloutId: null,
+  },
+};
 
-  // 현황 스냅샷
-  { object: 'block', type: 'callout', callout: {
-    icon: { type: 'emoji', emoji: '📊' }, color: 'gray_background',
-    rich_text: [{ type: 'text', text: { content: '이번 주 (~ 3.6) 현황' }, annotations: { bold: true } }],
-    children: [
-      { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: '✅ 완료  ' } }, { type: 'text', text: { content: '통장/카드 구조, 경쟁사 제품 확보, 피그마 출력-1, 쇼핑몰 개설, 카카오페이 결제' } }] } },
-      { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: '🔄 진행 중  ' } }, { type: 'text', text: { content: '타오바오 가입, 원가 정리, 브랜드 세팅, 상품소싱(30종), 본품 세팅, 옵션카드 세팅' } }] } },
-      { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: '🚨 업무막힘  ' }, annotations: { bold: true, color: 'red' } }, { type: 'text', text: { content: '1688 가입 (동결), 통신판매업 신고, 본품 주문 10종, CPO 디자이너 미확보' } }] } },
+const cfg = CONFIG[PM];
+const LAUNCH = new Date(cfg.launchDate);
+const DDAY = Math.ceil((LAUNCH - now) / (1000 * 60 * 60 * 24));
+
+// ── 블록 빌더 ────────────────────────────────────────────
+const mkBullet = (text, bold = false, color = 'default') => ({
+  object: 'block', type: 'bulleted_list_item',
+  bulleted_list_item: { rich_text: [{ type: 'text', text: { content: text }, annotations: { bold, color } }] }
+});
+const mkTodo = (text, checked = false) => ({
+  object: 'block', type: 'to_do',
+  to_do: { rich_text: [{ type: 'text', text: { content: text } }], checked }
+});
+
+// task 항목 → 브리핑 토글용 불릿
+// flat=true: callout 내부처럼 중첩 불가한 위치에서 context를 텍스트에 합침
+const mkTaskBullet = (item, flat = false) => {
+  if (flat) {
+    // callout 안에서는 children 중첩 불가 → context/output을 텍스트에 직접 합침
+    let text = item.title.trim();
+    if (item.output)  text += ` | 아웃풋: ${item.output}`;
+    if (item.context) text += `\n📍 ${item.context}`;
+    return mkBullet(text);
+  }
+  const children = [];
+  if (item.input)   children.push(mkBullet(`인풋: ${item.input}`));
+  if (item.output)  children.push(mkBullet(`아웃풋: ${item.output}`));
+  if (item.context) children.push({ object: 'block', type: 'paragraph', paragraph: { rich_text: [{ type: 'text', text: { content: `📍 ${item.context}` } }] } });
+  const block = mkBullet(item.title.trim());
+  if (children.length > 0) block.bulleted_list_item.children = children;
+  return block;
+};
+
+// ── 1. 프로젝트 DB 조회 ──────────────────────────────────
+console.log(`📊 ${cfg.label} DB 조회 중...`);
+const db = await queryDatabase(cfg.projectDbId, { page_size: 100 });
+
+const SKIP_PRIORITY = ['📍MileStone', '🎖 GOAL', '-'];
+const getStatus = p => cfg.statusType === 'status'
+  ? p.properties[cfg.statusField]?.status?.name || '-'
+  : p.properties[cfg.statusField]?.select?.name || '-';
+const getPriority = p => cfg.statusType === 'status'
+  ? p.properties[cfg.priorityField]?.status?.name || '-'
+  : p.properties[cfg.priorityField]?.select?.name || '-';
+
+const items = db.results
+  .map(p => ({
+    title: (p.properties[cfg.titleField]?.title?.[0]?.plain_text || '').replace(/^✅\s*/, '').trim(),
+    status: getStatus(p),
+    priority: getPriority(p),
+  }))
+  .filter(i => i.title.trim() && !SKIP_PRIORITY.includes(i.priority));
+
+const done    = items.filter(i => i.status.includes('완료'));
+const inProg  = items.filter(i => i.status === '진행 중');
+const blocked = items.filter(i => i.status === '업무막힘');
+const waiting = items.filter(i => i.status === '진행대기' && i.priority === '1');
+
+console.log(`  ✅ 완료 ${done.length} | 🔄 진행 중 ${inProg.length} | 🚨 막힘 ${blocked.length} | ⏳ 대기 ${waiting.length}`);
+
+// 지혜 오늘 업무는 3단계(실제 콜아웃 전송) 때 읽음
+const jihyeTasks = [];
+
+// ── 2. 주간회의 pm-gg 이번주 목표 읽기 ───────────────────
+console.log(`📅 주간회의 이번주 목표 조회 중...`);
+const MEETING_DB_ID = '31c111a5778880a68164f8f27f2463c8';
+const meetingRes = await queryDatabase(MEETING_DB_ID, {
+  filter: { property: '이름', title: { contains: 'weekly meeting' } },
+  sorts: [{ property: '날짜', direction: 'descending' }],
+  page_size: 1,
+}).catch(() => ({ results: [] }));
+
+let weeklyGoalLines = [];
+if (meetingRes.results?.length > 0) {
+  const weeklyPageId = meetingRes.results[0].id;
+  const weeklyBlocks = await getChildren(weeklyPageId);
+  const pmToggle = weeklyBlocks.find(b =>
+    b.type === 'toggle' && getText(b).includes(`pm-${PM} — 이번주 목표`)
+  );
+  if (pmToggle) {
+    const goalBlocks = await getChildren(pmToggle.id);
+    weeklyGoalLines = goalBlocks.map(b => getText(b)).filter(t => t.trim());
+    console.log(`  → pm-${PM} 이번주 목표 ${weeklyGoalLines.length}줄 읽음`);
+  } else {
+    console.log(`  → pm-${PM} 이번주 목표 토글 없음`);
+  }
+}
+
+// ── 3. 전날 마감 브리핑 읽기 (없으면 스킵) ───────────────
+let eodLines = [];
+console.log(`📋 전날(${YESTERDAY_LABEL}) 마감 브리핑 조회 중...`);
+const eodRes = await queryDatabase(cfg.briefingDbId, {
+  filter: { property: '이름', title: { equals: YESTERDAY_LABEL } }
+}).catch(() => ({ results: [] }));
+
+if (eodRes.results?.length > 0) {
+  const eodPageId = eodRes.results[0].id;
+  const eodChildren = await getChildren(eodPageId);
+  const eodToggle = eodChildren.find(b => b.type === 'toggle' && getText(b) === '업무 마감 브리핑');
+  if (eodToggle) {
+    const eodBlocks = await getChildren(eodToggle.id);
+    eodLines = eodBlocks.map(b => getText(b)).filter(t => t.trim());
+    console.log(`  → 마감 브리핑 ${eodLines.length}줄 읽음`);
+  } else {
+    console.log(`  → 마감 브리핑 토글 없음 (스킵)`);
+  }
+} else {
+  console.log(`  → ${YESTERDAY_LABEL} 페이지 없음 (스킵)`);
+}
+
+// ── JSON 모드: 데이터만 출력하고 종료 ────────────────────
+if (JSON_MODE) {
+  const output = {
+    date: TODAY_LABEL,
+    day: TODAY_DAY,
+    dday: DDAY,
+    weeklyGoals: weeklyGoalLines,
+    eod: eodLines,
+    tasks: {
+      done: done.map(i => ({ title: i.title, priority: i.priority })),
+      inProg: inProg.map(i => ({ title: i.title, priority: i.priority })),
+      blocked: blocked.map(i => ({ title: i.title, priority: i.priority })),
+      waiting: waiting.map(i => ({ title: i.title, priority: i.priority })),
+    }
+  };
+  console.log(JSON.stringify(output, null, 2));
+  process.exit(0);
+}
+
+// ── 4. 브리핑 DB 오늘 페이지 START_TOGGLE 확보 ──────────
+console.log(`📅 브리핑 DB 오늘 페이지 확인 중...`);
+const dbResult = await queryDatabase(cfg.briefingDbId, {
+  filter: { property: '이름', title: { equals: TODAY_LABEL } }
+}).catch(() => ({ results: [] }));
+
+let startToggleId;
+
+if (dbResult.results?.length > 0) {
+  const pageId = dbResult.results[0].id;
+  console.log(`  → 기존 페이지 (${pageId})`);
+  const children = await getChildren(pageId);
+  const t = children.find(b => b.type === 'toggle' && getText(b) === '업무 시작 브리핑');
+  startToggleId = t?.id;
+  if (!startToggleId) {
+    const r = await appendBlocks(pageId, [{ object: 'block', type: 'toggle', toggle: { rich_text: [{ type: 'text', text: { content: '업무 시작 브리핑' } }] } }]);
+    startToggleId = r.results[0].id;
+  }
+} else {
+  const newPage = await createPage(
+    { type: 'database_id', database_id: cfg.briefingDbId },
+    { '이름': { title: [{ type: 'text', text: { content: TODAY_LABEL } }] } },
+    [
+      { object: 'block', type: 'toggle', toggle: { rich_text: [{ type: 'text', text: { content: '업무 시작 브리핑' } }] } },
+      { object: 'block', type: 'toggle', toggle: { rich_text: [{ type: 'text', text: { content: '업무 마감 브리핑' } }] } },
     ]
-  }},
+  );
+  console.log(`  → 새 페이지 생성 (${newPage.id})`);
+  const children = await getChildren(newPage.id);
+  startToggleId = children.find(b => b.type === 'toggle' && getText(b) === '업무 시작 브리핑')?.id;
+}
 
-  // 현빈02
-  { object: 'block', type: 'toggle', toggle: {
-    rich_text: [{ type: 'text', text: { content: '현빈02 배정 ' }, annotations: { bold: true } }, { type: 'text', text: { content: '(5건)' }, annotations: { color: 'gray' } }],
+// 기존 내용 삭제
+const existing = await getChildren(startToggleId);
+for (const b of existing) await deleteBlock(b.id);
+
+// ── 4. 멤버별 배정 업무 구성 ─────────────────────────────
+const memberAssignments = {};
+
+for (const member of cfg.members) {
+  let tasks = [];
+
+  // Claude --assign 모드: PM이 결정한 배분 사용 (context, output 포함 가능)
+  if (ASSIGN_DATA && ASSIGN_DATA[member.name]) {
+    const assigned = ASSIGN_DATA[member.name];
+    tasks = {
+      urgent: assigned.filter(i => i.urgent).map(i => ({ title: i.title, context: i.context, input: i.input, output: i.output })),
+      normal: assigned.filter(i => !i.urgent).map(i => ({ title: i.title, context: i.context, input: i.input, output: i.output })),
+    };
+  } else if (member.role === 'blocker+p1') {
+    // GG 현빈02: 업무막힘 + 진행 중 우선순위1 (의사결정·크리티컬)
+    const urgent = blocked.filter(i => ['1','2','3'].includes(i.priority));
+    const normal = inProg.filter(i => i.priority === '1');
+    tasks = { urgent, normal, waiting: waiting.slice(0, 2) };
+  } else if (member.role === 'today') {
+    // GG 지혜: 진행 중 우선순위2,3 + 진행대기 상위3 (운영·실무 실행)
+    const jihyeInProg = inProg.filter(i => i.priority === '2' || i.priority === '3');
+    const jihyeWaiting = items.filter(i => i.status === '진행대기').slice(0, 3);
+    tasks = { inprog: jihyeInProg, waiting: jihyeWaiting };
+  } else if (member.role === 'inprog+p1') {
+    // CC 수지: 진행 중 + 진행대기 우선순위1
+    tasks = { inprog: inProg.filter(i => i.priority === '1' || i.priority === '2'), waiting: waiting.slice(0, 5) };
+  } else if (member.role === 'blocker') {
+    // CC 현빈: 업무막힘만
+    tasks = { urgent: blocked };
+  }
+  memberAssignments[member.name] = tasks;
+}
+
+// ── 5. 브리핑 블록 구성 ──────────────────────────────────
+const blocks = [];
+
+// 헤더
+blocks.push({
+  object: 'block', type: 'heading_2',
+  heading_2: { rich_text: [{ type: 'text', text: { content: `📋 ${TODAY_LABEL} (${TODAY_DAY}) PM:${cfg.label} 브리핑 — D-${DDAY}` } }] }
+});
+
+// 전날 마감 브리핑
+if (eodLines.length > 0) {
+  blocks.push({
+    object: 'block', type: 'callout',
+    callout: {
+      icon: { type: 'emoji', emoji: '🌙' }, color: 'purple_background',
+      rich_text: [{ type: 'text', text: { content: `전날(${YESTERDAY_LABEL}) 마감 브리핑` }, annotations: { bold: true } }],
+      children: eodLines.slice(0, 10).map(t => mkBullet(t))
+    }
+  });
+}
+
+// 이번주 목표 (weekly meeting에서 읽어온 내용)
+if (weeklyGoalLines.length > 0) {
+  blocks.push({
+    object: 'block', type: 'callout',
+    callout: {
+      icon: { type: 'emoji', emoji: '📌' }, color: 'yellow_background',
+      rich_text: [{ type: 'text', text: { content: '이번주 목표' }, annotations: { bold: true } }],
+      children: weeklyGoalLines.slice(0, 10).map(t => mkBullet(t))
+    }
+  });
+}
+
+// 현황 스냅샷
+blocks.push({
+  object: 'block', type: 'callout',
+  callout: {
+    icon: { type: 'emoji', emoji: '📊' }, color: 'gray_background',
+    rich_text: [{ type: 'text', text: { content: '이번 주 현황' }, annotations: { bold: true } }],
     children: [
-      { object: 'block', type: 'callout', callout: {
+      mkBullet(`✅ 완료 ${done.length}건`),
+      mkBullet(`🔄 진행 중 (${inProg.length}건)  ${inProg.map(i => i.title.trim()).join(', ')}`),
+      blocked.length > 0
+        ? { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [
+            { type: 'text', text: { content: `🚨 업무막힘 (${blocked.length}건)  ` }, annotations: { bold: true, color: 'red' } },
+            { type: 'text', text: { content: blocked.map(i => i.title.trim()).join(', ') } }
+          ] } }
+        : mkBullet('🚨 업무막힘 없음'),
+    ]
+  }
+});
+
+// 멤버별 토글
+for (const member of cfg.members) {
+  const a = memberAssignments[member.name];
+  const children = [];
+
+  if (a.urgent?.length > 0) {
+    children.push({
+      object: 'block', type: 'callout',
+      callout: {
         icon: { type: 'emoji', emoji: '🚨' }, color: 'red_background',
         rich_text: [{ type: 'text', text: { content: '긴급 — 오늘 중 해소' }, annotations: { bold: true } }],
-        children: [
-          { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: '[COO] 1688 재가입 — 새 계정으로 시도' } }] } },
-          { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: '[COO] 통신판매업 신고 — 전화 문의 후 즉시 진행' } }] } },
-          { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: '[CSCO] 본품 주문 10종 막힌 원인 파악 → 해소' } }] } },
-        ]
-      }},
-      { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: '[COO] 타오바오 가입 최종 완료 확인' }, annotations: { color: 'gray' } }] } },
-      { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: '[CFO] 원가 정리 완료' } }] } },
-    ]
-  }},
+        children: a.urgent.map(i => mkTaskBullet(i, true))
+      }
+    });
+  }
+  if (a.normal?.length > 0) a.normal.forEach(i => children.push(mkTaskBullet(i)));
+  if (a.inprog?.length > 0) a.inprog.forEach(i => children.push(mkTaskBullet(i)));
+  if (a.waiting?.length > 0) a.waiting.forEach(i => children.push(mkBullet(`[대기] ${i.title.trim()}`, false, 'gray')));
+  if (a.urgent?.length === 0 && a.normal?.length === 0 && a.inprog?.length === 0 && a.waiting?.length === 0) {
+    children.push(mkBullet('오늘 배정 업무 없음', false, 'gray'));
+  }
 
-  // 지혜
-  { object: 'block', type: 'toggle', toggle: {
-    rich_text: [{ type: 'text', text: { content: '지혜 배정 ' }, annotations: { bold: true } }, { type: 'text', text: { content: '(6건)' }, annotations: { color: 'gray' } }],
-    children: [
-      { object: 'block', type: 'callout', callout: {
-        icon: { type: 'emoji', emoji: '🔑' }, color: 'orange_background',
-        rich_text: [{ type: 'text', text: { content: '핵심 — 런칭 소싱 직결' }, annotations: { bold: true } }],
-        children: [
-          { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: '[CSCO] 1-2차 15종 찾기' }, annotations: { bold: true } }, { type: 'text', text: { content: ' — 소싱 미완 = 런칭 불가. 최우선.' }, annotations: { color: 'gray' } }] } },
-          { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: '[CSCO] 쑤자오, 타오003 업체 샘플 주문' }, annotations: { bold: true } }, { type: 'text', text: { content: ' — 주문 결제 캡쳐까지.' }, annotations: { color: 'gray' } }] } },
-        ]
-      }},
-      { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: '[CSCO] 1차 샘플 도착 시 즉시 검수 → 완료 사진 전달' } }] } },
-      { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: '[CSCO] ccmm 제품 수령 확인 → 수령 사진' } }] } },
-      { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: '[CPO] 브랜드별 캐리어 매칭 시트 v1 + 당근 캐리어 세팅 마무리' } }] } },
-      { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: '[COO] 홈택스 등록 — 계산서 메일 가입 + 사업자 카드 등록' } }] } },
-    ]
-  }},
+  const total = (a.urgent?.length || 0) + (a.normal?.length || 0) + (a.inprog?.length || 0) + (a.today?.length || 0) + (a.waiting?.length || 0);
+  blocks.push({
+    object: 'block', type: 'toggle',
+    toggle: {
+      rich_text: [
+        { type: 'text', text: { content: `${member.name} 배정 ` }, annotations: { bold: true } },
+        { type: 'text', text: { content: `(${total}건)` }, annotations: { color: 'gray' } }
+      ],
+      children
+    }
+  });
+}
 
-  // PM 코멘트
-  { object: 'block', type: 'callout', callout: {
+// PM 코멘트
+const commentLines = [];
+if (blocked.length > 0) commentLines.push(`최대 리스크: ${blocked.map(i => i.title.trim()).join(', ')} — 오늘 해소 필요.`);
+commentLines.push(DDAY <= 7 ? `D-${DDAY} 마지막 주. 모든 에너지 런칭에 집중.` : `D-${DDAY}. 크리티컬 패스 유지.`);
+blocks.push({
+  object: 'block', type: 'callout',
+  callout: {
     icon: { type: 'emoji', emoji: '💬' }, color: 'blue_background',
     rich_text: [{ type: 'text', text: { content: 'PM 코멘트' }, annotations: { bold: true } }],
-    children: [
-      { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: '최대 리스크: 소싱 미완 (15종 + 샘플 주문) + CPO 상세페이지/디자이너 미확보. 물건 없으면 런칭 없음.' } }] } },
-      { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: 'CTO (경쟁사 체크, CS봇)는 MVP 외 기능 — 소싱/CPO 해결 후 여유 되면 진행.' } }] } },
-      { object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: '지혜: 소싱 2건(15종 + 샘플 주문) 집중. 홈택스는 틈새 시간에 처리.' } }] } },
-    ]
-  }},
-];
+    children: commentLines.map(t => mkBullet(t))
+  }
+});
 
-await appendBlocks(BRIEFING_BLOCK, blocks);
-console.log('✅ PM 브리핑 재작성 완료');
+await appendBlocks(startToggleId, blocks);
+console.log(`✅ 브리핑 초안 작성 완료 → ${TODAY_LABEL} (${TODAY_DAY}) D-${DDAY}`);
+console.log(`📋 브리핑 검토 후 "실제 콜아웃 전송해줘" 입력하면 업무 배정됩니다.`);

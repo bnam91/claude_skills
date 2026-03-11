@@ -91,6 +91,18 @@ POLL_SEC      = 30   # 시트 폴링 간격
 RENAG_SEC     = 300  # 초기 알림 이후 재알림 간격 (5분)
 PRE_WARN_SEC  = 300  # 종료 예정 X초 전 사전 알림 (5분 전)
 
+# 하루 시작 기준 시간 (이 시간 이전은 전날로 간주)
+# 새벽 6시 이전은 전날 탭에 기록
+DAY_START_HOUR = 6
+
+def get_tab(ts=None):
+    """타임스탬프 기준 탭 날짜 반환. 새벽 DAY_START_HOUR 이전은 전날로 처리."""
+    from datetime import timedelta
+    dt = datetime.fromtimestamp(ts) if ts else datetime.now()
+    if dt.hour < DAY_START_HOUR:
+        dt = dt - timedelta(days=1)
+    return dt.strftime('%Y-%m-%d')
+
 
 # ── 알림 ────────────────────────────────────────────────
 def notify(title, message, sound='Glass'):
@@ -228,15 +240,15 @@ def sheet_check_overtime(row_num, tab):
         return False, 0
 
 
-def sheet_mark_done(row_num, end_time, han_il, status, soyo, memo, tab):
-    """C:실제종료 D:한 일 E:상태 F:소요 G:코멘트 기록"""
+def sheet_mark_done(row_num, end_time, han_il, status, soyo, memo, tab, eval_text=''):
+    """C:실제종료 D:한 일 E:상태 F:소요 G:코멘트 H:평가 기록"""
     try:
         s = get_sheets()
         s.spreadsheets().values().update(
             spreadsheetId=SHEET_ID,
-            range=f'{tab}!C{row_num}:G{row_num}',
+            range=f'{tab}!C{row_num}:H{row_num}',
             valueInputOption='USER_ENTERED',
-            body={'values': [[end_time, han_il, status, soyo, memo]]}
+            body={'values': [[end_time, han_il, status, soyo, memo, eval_text]]}
         ).execute()
         return True
     except Exception as e:
@@ -304,9 +316,20 @@ def calc_elapsed(start_ts):
 
 # ── 커맨드: start ────────────────────────────────────────
 def cmd_start(task_name, interval_min):
+    # ── 중복 실행 방지 ──────────────────────────────────────
+    existing = load_meta()
+    if existing:
+        try:
+            os.kill(existing['pid'], 0)
+            print(f'[중복 방지] 이미 실행 중인 타이머 있음 — {existing["task_name"]} (PID={existing["pid"]}, {existing["row_num"]}행)')
+            print(f'ALREADY_RUNNING=true')
+            sys.exit(0)
+        except (ProcessLookupError, OSError):
+            pass  # 프로세스 죽어있으면 계속 진행
+
     start_ts = time.time()
     start_time = datetime.fromtimestamp(start_ts).strftime('%H:%M')
-    tab = datetime.fromtimestamp(start_ts).strftime('%Y-%m-%d')
+    tab = get_tab(start_ts)
 
     # 갭 감지: 마지막 종료시간 ~ 현재 사이 30분 이상 공백이면 알림
     last_end = sheet_get_last_end(tab)
@@ -328,6 +351,19 @@ def cmd_start(task_name, interval_min):
     if not row_num:
         print('[오류] 시트 기록 실패')
         sys.exit(1)
+
+    # ── 시트 검수: 실제로 기록됐는지 확인 ──────────────────
+    try:
+        s = get_sheets()
+        verify = s.spreadsheets().values().get(
+            spreadsheetId=SHEET_ID, range=f'{tab}!A{row_num}:D{row_num}'
+        ).execute().get('values', [])
+        if verify and verify[0] and verify[0][0] == start_time:
+            print(f'[검수 OK] {tab} {row_num}행 확인 — {verify[0]}')
+        else:
+            print(f'[검수 경고] {row_num}행 내용 불일치 — {verify}')
+    except Exception as e:
+        print(f'[검수 오류] {e}')
 
     save_meta(row_num, interval_min, start_ts, tab, task_name)
     with open(PID_FILE, 'w') as f:
@@ -399,26 +435,44 @@ def cmd_start(task_name, interval_min):
 
 
 # ── 커맨드: done ─────────────────────────────────────────
-def cmd_done(row_num, han_il, status='완료', memo=''):
+def cmd_done(row_num, payload, status='완료'):
+    """
+    payload: JSON 문자열 또는 일반 문자열(한 일)
+    JSON 형식: {"han_il":"...", "comment":"...", "eval":"..."}
+    """
     meta = load_meta()
     end_time = datetime.now().strftime('%H:%M')
 
     if meta and meta.get('start_ts'):
         _, soyo = calc_elapsed(meta['start_ts'])
-        tab = meta.get('tab', datetime.now().strftime('%Y-%m-%d'))
+        tab = meta.get('tab', get_tab())
         start_time = meta.get('start_time', '')
     else:
         soyo = '알 수 없음'
-        tab = datetime.now().strftime('%Y-%m-%d')
+        tab = get_tab()
         start_time = ''
 
-    ok = sheet_mark_done(row_num, end_time, han_il, status, soyo, memo, tab)
+    # JSON 파싱 시도
+    try:
+        data = json.loads(payload)
+        han_il    = data.get('han_il', '')
+        memo      = data.get('comment', '')
+        eval_text = data.get('eval', '')
+        status    = data.get('status', status)
+    except (json.JSONDecodeError, TypeError):
+        han_il    = payload
+        memo      = ''
+        eval_text = ''
+
+    ok = sheet_mark_done(row_num, end_time, han_il, status, soyo, memo, tab, eval_text)
     if ok:
         print(f'[완료] {tab} {row_num}행 | {start_time}→{end_time} | 소요: {soyo}')
         print(f'TAB={tab}')
         print(f'ROW={row_num}')
         print(f'SOYO={soyo}')
         print(f'HAN_IL={han_il}')
+        if memo:      print(f'COMMENT={memo}')
+        if eval_text: print(f'EVAL={eval_text}')
     else:
         print('[오류] 시트 업데이트 실패')
 
@@ -426,7 +480,7 @@ def cmd_done(row_num, han_il, status='완료', memo=''):
 # ── 커맨드: eval ─────────────────────────────────────────
 def cmd_eval(row_num, eval_text, tab=None):
     if not tab:
-        tab = datetime.now().strftime('%Y-%m-%d')
+        tab = get_tab()
     ok = sheet_write_eval(row_num, eval_text, tab)
     if ok:
         print(f'[평가] {tab} {row_num}행 F열 기록 완료')
@@ -482,13 +536,12 @@ def main():
 
     elif cmd == 'done':
         if len(sys.argv) < 4:
-            print('사용법: python3 task_timer.py done 행번호 "한 일" ["메모"]')
+            print('사용법: python3 task_timer.py done 행번호 \'{"han_il":"...", "comment":"...", "eval":"..."}\'')
             sys.exit(1)
         row_num = int(sys.argv[2])
-        han_il  = sys.argv[3]
+        payload = sys.argv[3]
         status  = sys.argv[4] if len(sys.argv) > 4 else '완료'
-        memo    = sys.argv[5] if len(sys.argv) > 5 else ''
-        cmd_done(row_num, han_il, status, memo)
+        cmd_done(row_num, payload, status)
 
     elif cmd == 'eval':
         if len(sys.argv) < 4:
