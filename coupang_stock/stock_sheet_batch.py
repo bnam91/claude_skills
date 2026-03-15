@@ -63,11 +63,11 @@ def main():
 
     print(f"📊 시트 읽는 중: {sheet_id} / {tab}")
 
-    # ── 1. 헤더 읽기 (넓게) ─────────────────────────────────────────────────
-    header_data = sm.read(sheet_id, tab, 'A1:AZ1')
+    # ── 1. 헤더 읽기 (J열부터) ──────────────────────────────────────────────
+    header_data = sm.read(sheet_id, tab, 'J1:AZ1')
     header_row = header_data[0] if header_data else []
 
-    next_col_idx = find_next_empty_col(header_row)
+    next_col_idx = find_next_empty_col(header_row) + 9  # J=9 오프셋
     next_col_letter = col_index_to_letter(next_col_idx)
     print(f"📝 새 열: {next_col_letter}열 (인덱스 {next_col_idx})")
 
@@ -76,10 +76,10 @@ def main():
     sm.write(sheet_id, tab, f'{next_col_letter}1', [[now_str]])
     print(f"⏰ {next_col_letter}1 에 '{now_str}' 입력 완료")
 
-    # ── 3. C열 URL 읽기 (2행부터) ──────────────────────────────────────────
-    c_data = sm.read(sheet_id, tab, 'C2:C1000')
+    # ── 3. D열 URL 읽기 (2행부터) ──────────────────────────────────────────
+    c_data = sm.read(sheet_id, tab, 'D2:D1000')
     if not c_data:
-        print("⚠️  C열에 URL이 없습니다. 종료.")
+        print("⚠️  D열에 URL이 없습니다. 종료.")
         return
 
     urls = []
