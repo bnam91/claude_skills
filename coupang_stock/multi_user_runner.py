@@ -21,8 +21,78 @@ sys.path.append(os.path.expanduser('~/Documents/claude_skills/sheet_manager'))
 sys.path.append(os.path.expanduser('~/Documents/claude_skills/coupang_stock'))
 sys.path.append(os.path.expanduser('~/Documents/github_cloud/module_auth'))
 
+import auth
 import sheet_manager as sm
 from stock_checker import parse_vendor_item_id, get_stock_batch
+from googleapiclient.discovery import build
+
+# Sheets API 클라이언트 (색상 포맷용)
+_sheets_svc = None
+
+def get_sheets_svc():
+    global _sheets_svc
+    if _sheets_svc is None:
+        creds = auth.get_credentials()
+        _sheets_svc = build('sheets', 'v4', credentials=creds)
+    return _sheets_svc
+
+
+def get_sheet_gid(sheet_id: str, tab: str) -> int | None:
+    """탭 이름 → sheetId(gid) 반환"""
+    svc = get_sheets_svc()
+    meta = svc.spreadsheets().get(spreadsheetId=sheet_id).execute()
+    for s in meta.get('sheets', []):
+        if s['properties']['title'] == tab:
+            return s['properties']['sheetId']
+    return None
+
+
+def apply_stock_colors(sheet_id: str, tab: str, col_letter: str, row_value_pairs: list[tuple[int, str]]):
+    """증감 결과에 따라 셀 텍스트 색상 적용
+    - (+N) 빨간색 (경쟁사 재고 증가 = 위험)
+    - (-N) 파란색 (경쟁사 재고 감소 = 유리)
+    - (-)  회색 (변화 없음 or 첫 기록)
+    """
+    gid = get_sheet_gid(sheet_id, tab)
+    if gid is None:
+        return
+
+    col_idx = 0
+    c = col_letter.upper()
+    for ch in c:
+        col_idx = col_idx * 26 + (ord(ch) - ord('A') + 1)
+    col_idx -= 1  # 0-based
+
+    COLOR_PLUS  = {'red': 0.85, 'green': 0.11, 'blue': 0.11}  # 빨강
+    COLOR_MINUS = {'red': 0.13, 'green': 0.38, 'blue': 0.78}  # 파랑
+    COLOR_NONE  = {'red': 0.0, 'green': 0.0, 'blue': 0.0}  # 검정
+
+    requests = []
+    for row_num, value in row_value_pairs:
+        if '(+' in value:
+            color = COLOR_PLUS
+        elif re.search(r'\(-\d', value):
+            color = COLOR_MINUS
+        else:
+            color = COLOR_NONE
+
+        requests.append({'repeatCell': {
+            'range': {
+                'sheetId': gid,
+                'startRowIndex': row_num - 1,
+                'endRowIndex': row_num,
+                'startColumnIndex': col_idx,
+                'endColumnIndex': col_idx + 1,
+            },
+            'cell': {'userEnteredFormat': {'textFormat': {'foregroundColor': color}}},
+            'fields': 'userEnteredFormat.textFormat.foregroundColor'
+        }})
+
+    if requests:
+        get_sheets_svc().spreadsheets().batchUpdate(
+            spreadsheetId=sheet_id,
+            body={'requests': requests}
+        ).execute()
 
 # users_config 시트 ID
 USERS_CONFIG_SHEET_ID = '1JGMlXKpP5dPU2fOILO5m1D-XC7sF9FB6qGa8r5BWPqc'
@@ -158,6 +228,8 @@ def write_results(user: dict, col: str, prev_col: str | None, row_vid_map: dict[
     prev_stocks = read_prev_stock(user['sheet_id'], user['tab'], prev_col, list(row_vid_map.keys())) if prev_col else {}
 
     write_count = 0
+    color_targets = []  # [(row_num, value), ...]
+
     for row_num, vid in row_vid_map.items():
         if vid in stock_results:
             qty = stock_results[vid]['stockQuantity']
@@ -168,9 +240,12 @@ def write_results(user: dict, col: str, prev_col: str | None, row_vid_map: dict[
         else:
             value = 'ERROR'
         sm.write(user['sheet_id'], user['tab'], f'{col}{row_num}', [[value]])
+        color_targets.append((row_num, value))
         write_count += 1
 
-    print(f"  ✅ {user['user_name']} | {col}열 | {write_count}개 기록 완료")
+    # 색상 일괄 적용
+    apply_stock_colors(user['sheet_id'], user['tab'], col, color_targets)
+    print(f"  ✅ {user['user_name']} | {col}열 | {write_count}개 기록 완료 (색상 적용)")
 
 
 def main():
