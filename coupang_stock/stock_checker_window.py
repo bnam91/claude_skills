@@ -44,8 +44,8 @@ class CDP:
     def __init__(self, tab_id: str):
         import websocket
         self.ws = websocket.create_connection(
-            f'ws://localhost:9222/devtools/page/{tab_id}',
-            origin='http://localhost:9222',
+            f'ws://localhost:9223/devtools/page/{tab_id}',
+            origin='http://localhost:9223',
             timeout=30
         )
         self.counter = [0]
@@ -85,8 +85,8 @@ class CDP:
             pass
 
 
-CHROME_BIN = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-CHROME_USER_DATA = '/Users/a1/Documents/github_cloud/user_data/coupangWing_bnam91'
+CHROME_BIN = r'C:\Program Files\Google\Chrome\Application\chrome.exe'
+CHROME_USER_DATA = r'C:\Users\darli\Documents\github_cloud\user_data\coupangWing_bnam91'
 
 
 def launch_chrome() -> bool:
@@ -96,8 +96,8 @@ def launch_chrome() -> bool:
     subprocess.Popen(
         [
             CHROME_BIN,
-            '--remote-debugging-port=9222',
-            '--remote-allow-origins=http://localhost:9222',
+            '--remote-debugging-port=9223',
+            '--remote-allow-origins=http://localhost:9223',
             f'--user-data-dir={CHROME_USER_DATA}',
             '--no-first-run',
             '--no-default-browser-check',
@@ -108,7 +108,7 @@ def launch_chrome() -> bool:
     for _ in range(15):
         time.sleep(1)
         try:
-            requests.get('http://localhost:9222/json', timeout=2).json()
+            requests.get('http://localhost:9223/json', timeout=2).json()
             return True
         except:
             pass
@@ -119,26 +119,26 @@ def get_wing_tab() -> str | None:
     """Wing 탭 ID 반환. CDP 없으면 Chrome 자동 실행. 탭 없으면 자동 생성."""
     # CDP 접근 안 되면 Chrome 실행
     try:
-        requests.get('http://localhost:9222/json', timeout=2).json()
+        requests.get('http://localhost:9223/json', timeout=2).json()
     except:
         if not launch_chrome():
             print("[ERROR] Chrome 실행 실패")
             return None
 
     try:
-        tabs = requests.get('http://localhost:9222/json', timeout=5).json()
+        tabs = requests.get('http://localhost:9223/json', timeout=5).json()
         for t in tabs:
             if 'wing.coupang.com' in t.get('url', '') and t.get('type') == 'page':
                 return t['id']
 
         # Wing 탭 없으면 새 탭 열고 이동
         print("📂 Wing 탭 없음 → 자동 생성 중...")
-        r = requests.put('http://localhost:9222/json/new', timeout=5)
+        r = requests.put('http://localhost:9223/json/new', timeout=5)
         tab_id = r.json()['id']
         import websocket
         ws = websocket.create_connection(
-            f'ws://localhost:9222/devtools/page/{tab_id}',
-            origin='http://localhost:9222', timeout=10
+            f'ws://localhost:9223/devtools/page/{tab_id}',
+            origin='http://localhost:9223', timeout=10
         )
         ws.send(json.dumps({'id': 1, 'method': 'Page.navigate',
                             'params': {'url': 'https://wing.coupang.com/'}}))

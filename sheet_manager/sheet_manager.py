@@ -36,6 +36,19 @@ def write(spreadsheet_id, tab, range_notation, values):
     print(f"[완료] {tab}!{range_notation} 업데이트")
 
 
+def batch_write(spreadsheet_id, tab, data):
+    """여러 셀을 한 번의 API 호출로 업데이트. data는 [(range_notation, values), ...] 형태."""
+    service = get_service()
+    service.spreadsheets().values().batchUpdate(
+        spreadsheetId=spreadsheet_id,
+        body={
+            'valueInputOption': 'USER_ENTERED',
+            'data': [{'range': f"{tab}!{r}", 'values': v} for r, v in data]
+        }
+    ).execute()
+    print(f"[완료] {tab} {len(data)}개 셀 배치 업데이트")
+
+
 def append(spreadsheet_id, tab, values):
     """시트 마지막 행에 데이터 추가. values는 2차원 배열."""
     service = get_service()
