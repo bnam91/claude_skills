@@ -221,31 +221,31 @@ def collect_urls(user: dict) -> list[tuple[int, str]]:
 
 
 def write_results(user: dict, col: str, prev_col: str | None, row_vid_map: dict[int, int], stock_results: dict, now_str: str):
-    """날짜 헤더 기록 + 각 행에 증감량 포함 재고 기록"""
-    sm.write(user['sheet_id'], user['tab'], f'{col}1', [[now_str]])
-
+    """날짜 헤더 기록 + 각 행에 증감량 포함 재고 기록 (batchUpdate로 1회 호출)"""
     # 직전 열 재고 읽기
     prev_stocks = read_prev_stock(user['sheet_id'], user['tab'], prev_col, list(row_vid_map.keys())) if prev_col else {}
 
-    write_count = 0
     color_targets = []  # [(row_num, value), ...]
 
+    # 헤더 + 전체 데이터 한 번에 batchUpdate
+    data = [{'range': f"{user['tab']}!{col}1", 'values': [[now_str]]}]
     for row_num, vid in row_vid_map.items():
         if vid in stock_results:
             qty = stock_results[vid]['stockQuantity']
-            if qty is not None:
-                value = format_stock_value(qty, prev_stocks.get(row_num))
-            else:
-                value = '0 (-)'
+            value = format_stock_value(qty, prev_stocks.get(row_num)) if qty is not None else '0 (-)'
         else:
             value = 'ERROR'
-        sm.write(user['sheet_id'], user['tab'], f'{col}{row_num}', [[value]])
+        data.append({'range': f"{user['tab']}!{col}{row_num}", 'values': [[value]]})
         color_targets.append((row_num, value))
-        write_count += 1
+
+    get_sheets_svc().spreadsheets().values().batchUpdate(
+        spreadsheetId=user['sheet_id'],
+        body={'valueInputOption': 'RAW', 'data': data}
+    ).execute()
 
     # 색상 일괄 적용
     apply_stock_colors(user['sheet_id'], user['tab'], col, color_targets)
-    print(f"  ✅ {user['user_name']} | {col}열 | {write_count}개 기록 완료 (색상 적용)")
+    print(f"  ✅ {user['user_name']} | {col}열 | {len(color_targets)}개 기록 완료 (배치+색상 적용)")
 
 
 def main():
