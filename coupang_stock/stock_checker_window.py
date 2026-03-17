@@ -115,8 +115,97 @@ def launch_chrome() -> bool:
     return False
 
 
+def _load_wing_credentials() -> tuple[str, str]:
+    """wingid/wingpw를 .env에서 읽어 반환."""
+    import os
+    env_path = os.path.expanduser('~/Documents/github_cloud/module_api_key/.env')
+    wing_id, wing_pw = '', ''
+    with open(env_path) as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith('wingid'):
+                wing_id = line.split('=', 1)[1].strip().strip('"\'')
+            elif line.startswith('wingpw'):
+                wing_pw = line.split('=', 1)[1].strip().strip('"\'')
+    return wing_id, wing_pw
+
+
+def _login_if_needed(ws) -> bool:
+    """현재 탭 URL 확인 → xauth면 자동 로그인. 이미 로그인 True, 로그인 성공 True, 실패 False."""
+    import websocket as _ws_mod
+    ws.send(json.dumps({'id': 2, 'method': 'Runtime.evaluate',
+                        'params': {'expression': 'window.location.href'}}))
+    ws.settimeout(3)
+    current_url = ''
+    for _ in range(10):
+        try:
+            m = json.loads(ws.recv())
+            if m.get('id') == 2:
+                current_url = m['result']['result']['value']
+                break
+        except:
+            break
+
+    if 'xauth.coupang.com' not in current_url:
+        return True  # 이미 로그인된 상태
+
+    print("🔑 로그인 페이지 감지 → 자동 로그인 중...")
+    wing_id, wing_pw = _load_wing_credentials()
+
+    # 아이디 한 글자씩 천천히 입력
+    ws.send(json.dumps({'id': 3, 'method': 'Runtime.evaluate', 'params': {
+        'expression': "document.getElementById('username').value = ''; document.getElementById('username').focus();"
+    }}))
+    time.sleep(0.3)
+    for i, ch in enumerate(wing_id):
+        ws.send(json.dumps({'id': 100 + i, 'method': 'Runtime.evaluate', 'params': {
+            'expression': f"document.getElementById('username').value += {json.dumps(ch)};"
+        }}))
+        time.sleep(0.08 + (hash(ch) % 7) * 0.01)
+
+    time.sleep(0.4)
+
+    # 비번 한 글자씩 천천히 입력
+    ws.send(json.dumps({'id': 200, 'method': 'Runtime.evaluate', 'params': {
+        'expression': "document.getElementById('password').value = ''; document.getElementById('password').focus();"
+    }}))
+    time.sleep(0.3)
+    for i, ch in enumerate(wing_pw):
+        ws.send(json.dumps({'id': 201 + i, 'method': 'Runtime.evaluate', 'params': {
+            'expression': f"document.getElementById('password').value += {json.dumps(ch)};"
+        }}))
+        time.sleep(0.1 + (hash(ch) % 8) * 0.01)
+
+    time.sleep(0.5)
+
+    # 로그인 버튼 클릭
+    ws.send(json.dumps({'id': 3, 'method': 'Runtime.evaluate',
+                        'params': {'expression': "document.getElementById('kc-login').click()"}}))
+    # 리다이렉트 완료까지 대기
+    for _ in range(15):
+        time.sleep(1)
+        ws.send(json.dumps({'id': 4, 'method': 'Runtime.evaluate',
+                            'params': {'expression': 'window.location.href'}}))
+        ws.settimeout(2)
+        try:
+            for __ in range(5):
+                m = json.loads(ws.recv())
+                if m.get('id') == 4:
+                    url = m['result']['result']['value']
+                    if 'wing.coupang.com' in url and 'xauth' not in url:
+                        print("✅ 로그인 완료")
+                        return True
+                    break
+        except:
+            pass
+    print("[WARN] 로그인 완료 확인 실패 — 계속 진행")
+    return False
+
+
 def get_wing_tab() -> str | None:
-    """Wing 탭 ID 반환. CDP 없으면 Chrome 자동 실행. 탭 없으면 자동 생성."""
+    """Wing 탭 ID 반환. CDP 없으면 Chrome 자동 실행. 세션 만료 시 자동 로그인."""
+    import websocket
+
     # CDP 접근 안 되면 Chrome 실행
     try:
         requests.get('http://localhost:9223/json', timeout=2).json()
@@ -127,15 +216,23 @@ def get_wing_tab() -> str | None:
 
     try:
         tabs = requests.get('http://localhost:9223/json', timeout=5).json()
+
+        # 기존 Wing 탭 있으면 세션 상태 확인
         for t in tabs:
             if 'wing.coupang.com' in t.get('url', '') and t.get('type') == 'page':
-                return t['id']
+                tab_id = t['id']
+                ws = websocket.create_connection(
+                    f'ws://localhost:9223/devtools/page/{tab_id}',
+                    origin='http://localhost:9223', timeout=10
+                )
+                _login_if_needed(ws)
+                ws.close()
+                return tab_id
 
         # Wing 탭 없으면 새 탭 열고 이동
         print("📂 Wing 탭 없음 → 자동 생성 중...")
         r = requests.put('http://localhost:9223/json/new', timeout=5)
         tab_id = r.json()['id']
-        import websocket
         ws = websocket.create_connection(
             f'ws://localhost:9223/devtools/page/{tab_id}',
             origin='http://localhost:9223', timeout=10
@@ -143,84 +240,7 @@ def get_wing_tab() -> str | None:
         ws.send(json.dumps({'id': 1, 'method': 'Page.navigate',
                             'params': {'url': 'https://wing.coupang.com/'}}))
         time.sleep(5)
-
-        # 로그인 페이지 감지 → 자동 로그인
-        ws.send(json.dumps({'id': 2, 'method': 'Runtime.evaluate',
-                            'params': {'expression': 'window.location.href'}}))
-        ws.settimeout(3)
-        current_url = ''
-        for _ in range(10):
-            try:
-                m = json.loads(ws.recv())
-                if m.get('id') == 2:
-                    current_url = m['result']['result']['value']
-                    break
-            except:
-                break
-
-        if 'xauth.coupang.com' in current_url:
-            print("🔑 로그인 페이지 감지 → 자동 로그인 중...")
-            # .env에서 자격증명 읽기
-            import os
-            env_path = os.path.expanduser('~/Documents/github_cloud/module_api_key/.env')
-            wing_id, wing_pw = '', ''
-            with open(env_path) as f:
-                for line in f:
-                    line = line.strip()
-                    if line.startswith('wingid'):
-                        wing_id = line.split('=', 1)[1].strip().strip('"\'')
-                    elif line.startswith('wingpw'):
-                        wing_pw = line.split('=', 1)[1].strip().strip('"\'')
-
-            # 아이디 한 글자씩 천천히 입력
-            ws.send(json.dumps({'id': 3, 'method': 'Runtime.evaluate', 'params': {
-                'expression': "document.getElementById('username').value = ''; document.getElementById('username').focus();"
-            }}))
-            time.sleep(0.3)
-            for i, ch in enumerate(wing_id):
-                ws.send(json.dumps({'id': 100 + i, 'method': 'Runtime.evaluate', 'params': {
-                    'expression': f"document.getElementById('username').value += {json.dumps(ch)};"
-                }}))
-                time.sleep(0.08 + (hash(ch) % 7) * 0.01)
-
-            time.sleep(0.4)
-
-            # 비번 한 글자씩 천천히 입력
-            ws.send(json.dumps({'id': 200, 'method': 'Runtime.evaluate', 'params': {
-                'expression': "document.getElementById('password').value = ''; document.getElementById('password').focus();"
-            }}))
-            time.sleep(0.3)
-            for i, ch in enumerate(wing_pw):
-                ws.send(json.dumps({'id': 201 + i, 'method': 'Runtime.evaluate', 'params': {
-                    'expression': f"document.getElementById('password').value += {json.dumps(ch)};"
-                }}))
-                time.sleep(0.1 + (hash(ch) % 8) * 0.01)
-
-            time.sleep(0.5)
-
-            # 로그인 버튼 클릭
-            ws.send(json.dumps({'id': 3, 'method': 'Runtime.evaluate',
-                                'params': {'expression': "document.getElementById('kc-login').click()"}}))
-            # 리다이렉트 완료까지 대기
-            for _ in range(15):
-                time.sleep(1)
-                ws.send(json.dumps({'id': 4, 'method': 'Runtime.evaluate',
-                                    'params': {'expression': 'window.location.href'}}))
-                ws.settimeout(2)
-                try:
-                    for __ in range(5):
-                        m = json.loads(ws.recv())
-                        if m.get('id') == 4:
-                            url = m['result']['result']['value']
-                            if 'wing.coupang.com' in url and 'xauth' not in url:
-                                print("✅ 로그인 완료")
-                                ws.close()
-                                return tab_id
-                            break
-                except:
-                    pass
-            print("[WARN] 로그인 완료 확인 실패 — 계속 진행")
-
+        _login_if_needed(ws)
         ws.close()
         return tab_id
 
@@ -229,14 +249,22 @@ def get_wing_tab() -> str | None:
     return None
 
 
+def close_wing_tab(tab_id: str):
+    """Wing 탭 종료."""
+    try:
+        requests.get(f'http://localhost:9223/json/close/{tab_id}', timeout=5)
+        print("🔒 Wing 탭 종료 완료")
+    except:
+        pass
+
+
 # ── 3. Chrome 브라우저에서 직접 fetch (봇 방어 우회) ─────────────────────────
 
-def get_stock_via_cdp(vendor_item_ids: list[int]) -> dict[int, dict]:
+def get_stock_via_cdp(vendor_item_ids: list[int], tab_id: str) -> dict[int, dict]:
     """
     Chrome CDP를 통해 브라우저 컨텍스트에서 직접 fetch.
     봇 방어(Akamai)를 브라우저 핑거프린트로 우회.
     """
-    tab_id = get_wing_tab()
     if not tab_id:
         raise RuntimeError("Chrome에서 coupang.com 탭을 찾을 수 없습니다. Chrome을 열고 wing.coupang.com에 로그인하세요.")
 
@@ -296,12 +324,18 @@ def get_stock_via_cdp(vendor_item_ids: list[int]) -> dict[int, dict]:
 # ── 4. 배치 처리 ─────────────────────────────────────────────────────────────
 
 def get_stock_batch(vendor_item_ids: list[int], chunk_size: int = 200) -> dict:
+    tab_id = get_wing_tab()
+    if not tab_id:
+        raise RuntimeError("Wing 탭 준비 실패")
     results = {}
-    for i in range(0, len(vendor_item_ids), chunk_size):
-        chunk = vendor_item_ids[i:i + chunk_size]
-        results.update(get_stock_via_cdp(chunk))
-        if i + chunk_size < len(vendor_item_ids):
-            time.sleep(0.5)
+    try:
+        for i in range(0, len(vendor_item_ids), chunk_size):
+            chunk = vendor_item_ids[i:i + chunk_size]
+            results.update(get_stock_via_cdp(chunk, tab_id))
+            if i + chunk_size < len(vendor_item_ids):
+                time.sleep(0.5)
+    finally:
+        close_wing_tab(tab_id)
     return results
 
 
