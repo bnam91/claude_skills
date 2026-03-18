@@ -32,9 +32,9 @@ const ANCHOR_BLOCKS = {
   toggle: {
     titles: ['inbox'],
     pinned_prefix: '📌',
-    date_within_days: 7
+    date_within_days: 5
   },
-  heading: { date_within_days: 7 },
+  heading: { date_within_days: 5 },
   paragraph: {
     last_empty_only: true,
     include_prefix: '업무요청_'  // '업무요청_현빈' 등 포함 시 앵커
@@ -79,28 +79,52 @@ async function readCallout(name, calloutId, opts = {}) {
 }
 
 // ── 업무 추가 ──────────────────────────────────
-async function addTask(name, date, task) {
+function buildTodoBlock(task, opts = {}) {
+  const { background, input, output } = opts;
+  const isComplex = background || input || output;
+
+  if (!isComplex) {
+    return { object: 'block', type: 'to_do', to_do: { rich_text: [{ type: 'text', text: { content: task } }], checked: false } };
+  }
+
+  const toggleChildren = [];
+  if (background) toggleChildren.push({ object: 'block', type: 'paragraph', paragraph: { rich_text: [{ type: 'text', text: { content: `📍 ${background}` } }] } });
+  if (input)      toggleChildren.push({ object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: `인풋: ${input}` } }] } });
+  if (output)     toggleChildren.push({ object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: `아웃풋: ${output}` } }] } });
+
+  return {
+    object: 'block', type: 'to_do',
+    to_do: {
+      rich_text: [{ type: 'text', text: { content: task } }],
+      checked: false,
+      children: [{
+        object: 'block', type: 'toggle',
+        toggle: {
+          rich_text: [{ type: 'text', text: { content: '내용:' } }],
+          children: toggleChildren
+        }
+      }]
+    }
+  };
+}
+
+async function addTask(name, date, task, opts = {}) {
   const calloutId = CALLOUTS[name];
   if (!calloutId) { log(`❌ 알 수 없는 담당자: ${name}`); process.exit(1); }
 
   const blocks = await getChildren(calloutId);
   const existing = blocks.find(b => b.type === 'toggle' && getText(b) === date);
+  const todoBlock = buildTodoBlock(task, opts);
 
   if (existing) {
-    await appendBlocks(existing.id, [{
-      object: 'block', type: 'to_do',
-      to_do: { rich_text: [{ type: 'text', text: { content: task } }], checked: false }
-    }]);
+    await appendBlocks(existing.id, [todoBlock]);
     log(`✅ [${name}] "${date}" 토글에 업무 추가: ${task}`);
   } else {
     await appendBlocks(calloutId, [{
       object: 'block', type: 'toggle',
       toggle: {
         rich_text: [{ type: 'text', text: { content: date } }],
-        children: [{
-          object: 'block', type: 'to_do',
-          to_do: { rich_text: [{ type: 'text', text: { content: task } }], checked: false }
-        }]
+        children: [todoBlock]
       }
     }]);
     log(`✅ [${name}] "${date}" 토글 생성 후 업무 추가: ${task}`);
@@ -128,7 +152,7 @@ function isOlderThanWeek(parsed, today) {
   if (d > today) year--; // 미래 날짜면 작년
   const target = new Date(year, parsed.month - 1, parsed.day);
   const diffDays = Math.floor((today - target) / (24 * 60 * 60 * 1000));
-  return diffDays >= 7;  // 7일 이상 지남 (일주일 포함)
+  return diffDays >= 5;  // 5일 이상 지남
 }
 
 function isEmptyOrJunk(text) {
@@ -288,7 +312,7 @@ async function moveLegacy(name) {
 }
 
 async function runLegacyMove(who) {
-  log('\n📦 일주일 지난 날짜 토글 → 이전(legacy) 페이지 이동');
+  log('\n📦 5일 지난 날짜 토글 → 이전(legacy) 페이지 이동');
   log('─'.repeat(40));
   const names = who ? [who] : Object.keys(CALLOUTS);
   let total = 0;
@@ -372,7 +396,12 @@ if (args.includes('--read')) {
     log('사용법: node claude_runner.js --add --who 지혜 --date 3.2 --task "업무내용"');
     process.exit(1);
   }
-  await addTask(who, date, task);
+  const opts = {
+    background: arg('--background'),
+    input: arg('--input'),
+    output: arg('--output'),
+  };
+  await addTask(who, date, task, opts);
 
 } else if (args.includes('--write')) {
   const page = arg('--page'), text = arg('--text');
@@ -394,8 +423,8 @@ if (args.includes('--read')) {
 } else {
   log('사용법:');
   log('  node claude_runner.js --read [--summary] [--who 지혜]  # --summary: 토글만, 하위 데이터 생략');
-  log('  node claude_runner.js --add --who 지혜 --date 3.2 --task "업무내용"');
-  log('  node claude_runner.js --legacy-move [--who 지혜]  # 일주일 지난 토글 → 이전 페이지');
+  log('  node claude_runner.js --add --who 지혜 --date 3.2 --task "업무명" [--background "배경" --input "인풋" --output "아웃풋" --comment "코멘트"]');
+  log('  node claude_runner.js --legacy-move [--who 지혜]  # 5일 지난 토글 → 이전 페이지');
   log('  node claude_runner.js --write --page <pageId> --text "내용"');
   log('  node claude_runner.js --page-read --page <pageId>');
 }
