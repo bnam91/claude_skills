@@ -11,7 +11,7 @@
 import { getPage, updatePageTitle } from './notion_api.js';
 
 const NOTION_URL = 'https://www.notion.so/D-22-2f6111a5778880c0acdbc65c60238999';
-const D_DAY = { month: 3, day: 20 };  // 3월 20일
+const D_DAY = { month: 4, day: 3 };  // 4월 3일
 
 function extractPageId(input) {
   if (!input || typeof input !== 'string') return null;
