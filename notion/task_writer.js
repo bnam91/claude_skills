@@ -23,11 +23,16 @@
  *           "background": "배경/맥락",
  *           "input": "인풋 위치",
  *           "output": "아웃풋 위치",
- *           "comment": "코멘트"
+ *           "comment": "코멘트 (👉 prefix 자동)"
  *         }
  *       ]
  *     }
  *   ]
+ *
+ * 복잡 업무(background/input/output/comment 중 하나라도 있으면):
+ *   Notion API 중첩 제한으로 인해 2단계로 처리
+ *   1단계: to_do 블록 생성
+ *   2단계: "내용:" 토글 추가 → 세부 내용 추가
  */
 
 import { readFileSync } from 'fs';
@@ -51,30 +56,50 @@ function rt(content) {
   return [{ type: 'text', text: { content } }];
 }
 
-function buildTodoBlock(taskObj) {
-  const { task, background, input, output } = taskObj;
-  const isComplex = background || input || output;
+function isComplex(taskObj) {
+  return !!(taskObj.background || taskObj.input || taskObj.output || taskObj.comment);
+}
 
-  if (!isComplex) {
-    return { object: 'block', type: 'to_do', to_do: { rich_text: rt(task), checked: false } };
+/** 단순 to_do 블록 (children 없음) */
+function buildSimpleTodo(taskObj) {
+  return { object: 'block', type: 'to_do', to_do: { rich_text: rt(taskObj.task), checked: false } };
+}
+
+/** 복잡 업무: to_do 생성 후 내용 토글을 별도 appendBlocks으로 추가 */
+async function appendComplexDetail(todoBlockId, taskObj) {
+  const { background, input, output, comment } = taskObj;
+
+  // 1) "내용:" 토글 추가 (children 없이)
+  const toggleRes = await appendBlocks(todoBlockId, [
+    { object: 'block', type: 'toggle', toggle: { rich_text: rt('내용:') } }
+  ]);
+  const toggleId = toggleRes.results[0].id;
+
+  // 2) 내용 토글 안에 세부 내용 추가
+  const detailBlocks = [];
+  if (background) detailBlocks.push({ object: 'block', type: 'paragraph',         paragraph:         { rich_text: rt(`📍 ${background}`) } });
+  if (input)      detailBlocks.push({ object: 'block', type: 'bulleted_list_item', bulleted_list_item:{ rich_text: rt(`인풋: ${input}`) } });
+  if (output)     detailBlocks.push({ object: 'block', type: 'bulleted_list_item', bulleted_list_item:{ rich_text: rt(`아웃풋: ${output}`) } });
+  if (comment)    detailBlocks.push({ object: 'block', type: 'paragraph',         paragraph:         { rich_text: rt(`👉 ${comment}`) } });
+
+  if (detailBlocks.length) {
+    await appendBlocks(toggleId, detailBlocks);
   }
+}
 
-  const toggleChildren = [];
-  if (background) toggleChildren.push({ object: 'block', type: 'paragraph',           paragraph:           { rich_text: rt(`📍 ${background}`) } });
-  if (input)      toggleChildren.push({ object: 'block', type: 'bulleted_list_item',   bulleted_list_item:  { rich_text: rt(`인풋: ${input}`) } });
-  if (output)     toggleChildren.push({ object: 'block', type: 'bulleted_list_item',   bulleted_list_item:  { rich_text: rt(`아웃풋: ${output}`) } });
+/** 검수: 추가된 업무가 실제로 존재하는지 확인 */
+async function verify(dateToggleId, tasks) {
+  const blocks = await getChildren(dateToggleId);
+  const todoTexts = blocks
+    .filter(b => b.type === 'to_do')
+    .map(b => b.to_do?.rich_text?.[0]?.plain_text || '');
 
-  return {
-    object: 'block', type: 'to_do',
-    to_do: {
-      rich_text: rt(task),
-      checked: false,
-      children: [{
-        object: 'block', type: 'toggle',
-        toggle: { rich_text: rt('내용:'), children: toggleChildren }
-      }]
-    }
-  };
+  const missing = [];
+  for (const t of tasks) {
+    const found = todoTexts.some(text => text.includes(t.task.slice(0, 10)));
+    if (!found) missing.push(t.task);
+  }
+  return missing;
 }
 
 async function addTasksForPerson(entry) {
@@ -85,22 +110,47 @@ async function addTasksForPerson(entry) {
   if (!calloutId) { log(`❌ 알 수 없는 담당자: ${who}`); return; }
   if (!tasks?.length) { log(`⚠️  [${who}] tasks 없음`); return; }
 
-  const blocks = await getChildren(calloutId);
-  const existing = blocks.find(b => b.type === 'toggle' && getText(b) === date);
-  const todoBlocks = tasks.map(buildTodoBlock);
+  // 날짜 토글 찾기 또는 생성
+  const topBlocks = await getChildren(calloutId);
+  let dateToggle = topBlocks.find(b => b.type === 'toggle' && getText(b) === date);
 
-  if (existing) {
-    await appendBlocks(existing.id, todoBlocks);
-    log(`✅ [${who}] "${date}" 토글에 ${todoBlocks.length}개 업무 추가`);
-  } else {
-    await appendBlocks(calloutId, [{
+  if (!dateToggle) {
+    const res = await appendBlocks(calloutId, [{
       object: 'block', type: 'toggle',
-      toggle: { rich_text: rt(date), children: todoBlocks }
+      toggle: { rich_text: rt(date) }
     }]);
-    log(`✅ [${who}] "${date}" 토글 생성 후 ${todoBlocks.length}개 업무 추가`);
+    dateToggle = res.results[0];
+    log(`  📅 "${date}" 토글 새로 생성`);
   }
 
+  // 모든 task를 단순 to_do로 먼저 일괄 추가
+  const simpleTodos = tasks.map(buildSimpleTodo);
+  const addRes = await appendBlocks(dateToggle.id, simpleTodos);
+
+  log(`✅ [${who}] "${date}" 토글에 ${tasks.length}개 업무 추가`);
   tasks.forEach(t => log(`   • ${t.task}`));
+
+  // 복잡 업무는 생성된 블록 ID에 내용 토글 개별 추가
+  const complexTasks = tasks.map((t, i) => ({ taskObj: t, blockId: addRes.results[i]?.id }))
+                            .filter(({ taskObj }) => isComplex(taskObj));
+
+  if (complexTasks.length) {
+    log(`  📎 세부내용 추가 중... (${complexTasks.length}건)`);
+    for (const { taskObj, blockId } of complexTasks) {
+      if (!blockId) { log(`  ⚠️  블록 ID 없음 (${taskObj.task}) — 세부내용 스킵`); continue; }
+      await appendComplexDetail(blockId, taskObj);
+      log(`     ✓ 세부내용: ${taskObj.task}`);
+    }
+  }
+
+  // 검수
+  const missing = await verify(dateToggle.id, tasks);
+  if (missing.length) {
+    log(`  ⚠️  검수 실패 — 누락된 업무:`);
+    missing.forEach(m => log(`     ✗ ${m}`));
+  } else {
+    log(`  ✔  검수 완료 — 모든 업무 정상 등록`);
+  }
 }
 
 // ── JSON 로드 ───────────────────────────────────
