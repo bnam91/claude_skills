@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 tokens/
 .env
+node_modules/

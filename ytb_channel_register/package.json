@@ -1,0 +1,10 @@
+{
+  "name": "ytb_channel_register",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "googleapis": "^144.0.0",
+    "puppeteer": "^24.40.0"
+  }
+}
