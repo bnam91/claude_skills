@@ -1,0 +1,39 @@
+{
+  "projectId": "xx",
+  "displayName": "XX 역전야매치트키",
+  "databaseId": "31c111a5778881dfaa2bd7121a81563d",
+  "briefingDbId": "31c111a5778881955ad63dd9acca7e5d9",
+
+  "fields": {
+    "title":    { "name": "업무",        "type": "title" },
+    "status":   { "name": "4_상태",      "type": "select" },
+    "priority": { "name": "1_우선순위",  "type": "select" },
+    "parent":   { "name": "상위 항목",   "type": "relation" }
+  },
+
+  "statusMap": {
+    "진행 중":   "진행 중",
+    "업무막힘":  "업무막힘",
+    "진행대기":  "진행대기",
+    "완료":      "완료"
+  },
+
+  "prioritySemantics": "week",
+  "skipPriorities": [],
+
+  "members": [
+    { "name": "현빈01", "calloutId": "31c111a5-7788-81cc-813b-ec06b86bf5a7", "role": "blocker+p1" }
+  ],
+
+  "launchDate": "2026-06-15",
+
+  "timeline": {
+    "listName": "XX_timeline",
+    "enabled": true
+  },
+  "phases": [
+    { "name": "Phase 1", "weeks": "1-4" },
+    { "name": "Phase 2", "weeks": "5-8" },
+    { "name": "Phase 3", "weeks": "9-12" }
+  ]
+}

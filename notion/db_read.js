@@ -1,20 +1,23 @@
 #!/usr/bin/env node
 /**
- * db_read.js - Notion 데이터베이스 조회 (전용)
+ * db_read.js - Notion 데이터베이스 조회 (어댑터 기반)
  *
- * 사용법: node db_read.js
+ * 사용법: node db_read.js [--pm gg|cc|xx]
  */
 
 import { queryDatabase, getDatabase } from './notion_api.js';
+import { createAdapter } from './adapter/index.js';
 
-const DB_URL = 'https://www.notion.so/2f6111a5778881ceaf1be4e73f6644ea?v=2f6111a577888116bef8000c96c9ba8f';
-const DB_ID = '2f6111a5778881ceaf1be4e73f6644ea';
+const pmArg = process.argv.includes('--pm') ? process.argv[process.argv.indexOf('--pm') + 1] : 'gg';
+const adapter = createAdapter(pmArg);
+const config = adapter.getConfig();
+const DB_ID = config.databaseId;
 
-// UI 순서에 맞게 정렬 (Notion 뷰 기준. 필요시 수정)
+// UI 순서에 맞게 정렬 (어댑터 config 기반)
 const SORTS = [
-  { property: '우선순위', direction: 'ascending' },
-  { property: '상태', direction: 'ascending' },
-  { property: '데드라인(까지)', direction: 'ascending' },
+  { property: config.fields.priority.name, direction: 'ascending' },
+  { property: config.fields.status.name, direction: 'ascending' },
+  ...(config.fields.deadline ? [{ property: config.fields.deadline.name, direction: 'ascending' }] : []),
   { timestamp: 'created_time', direction: 'ascending' }
 ];
 
@@ -68,7 +71,7 @@ async function fetchAllPages() {
 }
 
 function getParentId(page) {
-  const rel = page.properties?.['상위 항목']?.relation;
+  const rel = page.properties?.[config.fields.parent.name]?.relation;
   return rel?.[0]?.id || null;
 }
 
@@ -89,11 +92,11 @@ function buildHierarchy(pages) {
 
   const sortKey = p => {
     const props = p.properties || {};
-    let prio = propToText(props['우선순위']) || 'zzz';
+    let prio = propToText(props[config.fields.priority.name]) || 'zzz';
     if (prio.includes('GOAL')) prio = '\uffff' + prio;  // GOAL은 맨 밑으로
-    const status = propToText(props['상태']) || 'zzz';
-    const date = propToText(props['데드라인(까지)']) || '';
-    const task = propToText(props['TASK']) || '';
+    const status = propToText(props[config.fields.status.name]) || 'zzz';
+    const date = config.fields.deadline ? (propToText(props[config.fields.deadline.name]) || '') : '';
+    const task = propToText(props[config.fields.title.name]) || '';
     return [prio, status, date, task];
   };
   roots.sort((a, b) => {
@@ -122,8 +125,15 @@ function printPage(page, propKeys, indent = '') {
   console.log(indent + '  ' + row.join(' | '));
 }
 
-// 출력 칼럼 순서
-const COLUMN_ORDER = ['우선순위', 'TASK', '아웃풋', '데드라인(까지)', '상태', '이슈 노트'];
+// 출력 칼럼 순서 (어댑터 config 기반)
+const COLUMN_ORDER = [
+  config.fields.priority.name,
+  config.fields.title.name,
+  ...(config.fields.output ? [config.fields.output.name] : []),
+  ...(config.fields.deadline ? [config.fields.deadline.name] : []),
+  config.fields.status.name,
+  ...(config.fields.issueNote ? [config.fields.issueNote.name] : []),
+];
 
 try {
   const db = await getDatabase(DB_ID);

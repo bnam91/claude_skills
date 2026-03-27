@@ -1,0 +1,39 @@
+{
+  "projectId": "gg",
+  "displayName": "GG 딜롱·사입",
+  "databaseId": "2f6111a5778881ceaf1be4e73f6644ea",
+  "briefingDbId": "318111a57788804ba081cb8ae05707ae",
+
+  "fields": {
+    "title":     { "name": "TASK",           "type": "title" },
+    "status":    { "name": "상태",            "type": "status" },
+    "priority":  { "name": "우선순위",        "type": "status" },
+    "parent":    { "name": "상위 항목",       "type": "relation" },
+    "deadline":  { "name": "데드라인(까지)",   "type": "date" },
+    "output":    { "name": "아웃풋",          "type": "rich_text" },
+    "issueNote": { "name": "이슈 노트",      "type": "rich_text" }
+  },
+
+  "statusMap": {
+    "진행 중":   "진행 중",
+    "업무막힘":  "업무막힘",
+    "진행대기":  "진행대기",
+    "완료":      "완료",
+    "완료_aar":  "**완료**"
+  },
+
+  "prioritySemantics": "level",
+  "skipPriorities": ["-"],
+
+  "members": [
+    { "name": "현빈02", "calloutId": "2f1111a577888127951bc2b17188efff", "role": "blocker+p1" },
+    { "name": "지혜",   "calloutId": "2f1111a5778881e0b79eec85bbc540c5", "role": "today" }
+  ],
+
+  "launchDate": "2026-04-03",
+
+  "timeline": {
+    "listName": "GG_timeline",
+    "enabled": true
+  }
+}

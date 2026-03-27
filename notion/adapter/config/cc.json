@@ -1,0 +1,35 @@
+{
+  "projectId": "cc",
+  "displayName": "CC 커머스",
+  "databaseId": "31c111a5778881a89626ceef93de198b",
+  "briefingDbId": "31c111a57788814babddf63dad42844e",
+
+  "fields": {
+    "title":    { "name": "업무",        "type": "title" },
+    "status":   { "name": "4_상태",      "type": "select" },
+    "priority": { "name": "1_우선순위",  "type": "select" },
+    "parent":   { "name": "상위 항목",   "type": "relation" }
+  },
+
+  "statusMap": {
+    "진행 중":   "진행 중",
+    "업무막힘":  "업무막힘",
+    "진행대기":  "진행대기",
+    "완료":      "완료"
+  },
+
+  "prioritySemantics": "stage",
+  "skipPriorities": ["대기", "🎖 GOAL", "📍MileStone"],
+
+  "members": [
+    { "name": "수지", "calloutId": "31c111a5-7788-8181-8cd0-ea22ecffb73a", "role": "inprog+p1" },
+    { "name": "현빈", "calloutId": "31c111a5-7788-81ba-bda7-db0d6d0b1090", "role": "blocker" }
+  ],
+
+  "launchDate": "2026-04-14",
+
+  "timeline": {
+    "listName": "CC_timeline",
+    "enabled": true
+  }
+}

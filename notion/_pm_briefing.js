@@ -4,11 +4,12 @@
  * 실행: node _pm_briefing.js --pm gg|cc
  */
 import { queryDatabase, getChildren, deleteBlock, appendBlocks, createPage, getText } from './notion_api.js';
+import { createAdapter } from './adapter/index.js';
 
 // ── CLI 인자 ─────────────────────────────────────────────
 const pmArg = process.argv.includes('--pm') ? process.argv[process.argv.indexOf('--pm') + 1] : 'gg';
 const PM = pmArg.toLowerCase();
-if (!['gg', 'cc'].includes(PM)) { console.error('--pm gg 또는 --pm cc 로 지정하세요'); process.exit(1); }
+if (!['gg', 'cc', 'xx'].includes(PM)) { console.error('--pm gg|cc|xx 로 지정하세요'); process.exit(1); }
 const JSON_MODE = process.argv.includes('--json');
 const ASSIGN_IDX = process.argv.indexOf('--assign');
 const ASSIGN_DATA = ASSIGN_IDX !== -1 ? JSON.parse(process.argv[ASSIGN_IDX + 1]) : null;
@@ -21,43 +22,26 @@ const YESTERDAY_LABEL = `${yesterday.getMonth() + 1}.${yesterday.getDate()}`;
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const TODAY_DAY = WEEKDAYS[now.getDay()];
 
-// ── PM별 설정 ────────────────────────────────────────────
-const CONFIG = {
-  gg: {
-    label: 'GG',
-    projectDbId: '2f6111a5778881ceaf1be4e73f6644ea',
-    briefingDbId: '318111a57788804ba081cb8ae05707ae',
-    launchDate: '2026-03-20',
-    titleField: 'TASK',
-    statusField: '상태',
-    priorityField: '우선순위',
-    statusType: 'status',   // status vs select
-    members: [
-      { name: '현빈02', calloutId: '2f1111a577888127951bc2b17188efff', role: 'blocker+p1' },
-      { name: '지혜',   calloutId: '2f1111a5778881e0b79eec85bbc540c5', role: 'today' },
-    ],
-    jihyeCalloutId: '2f1111a5778881e0b79eec85bbc540c5',
-  },
-  cc: {
-    label: 'CC',
-    projectDbId: '31c111a5778881a89626ceef93de198b',
-    briefingDbId: '31c111a57788814babddf63dad42844e',
-    launchDate: '2026-04-14',
-    titleField: '업무',
-    statusField: '4_상태',
-    priorityField: '1_우선순위',
-    statusType: 'select',
-    members: [
-      { name: '수지',   calloutId: '2e6111a5778880a6a2f7cfca611ea5b7', role: 'inprog+p1' },
-      { name: '현빈',   calloutId: '8bcea4ed47cb46ae90d7dfa888e09c16', role: 'blocker' },
-    ],
-    jihyeCalloutId: null,
-  },
+// ── PM별 설정 (어댑터 기반) ──────────────────────────────
+const adapter = createAdapter(PM);
+const adapterConfig = adapter.getConfig();
+const meta = adapter.getProjectMeta();
+
+const cfg = {
+  label: adapterConfig.displayName.split(' ')[0], // "GG", "CC", "XX"
+  projectDbId: adapterConfig.databaseId,
+  briefingDbId: adapterConfig.briefingDbId,
+  launchDate: adapterConfig.launchDate,
+  titleField: adapterConfig.fields.title.name,
+  statusField: adapterConfig.fields.status.name,
+  priorityField: adapterConfig.fields.priority.name,
+  statusType: adapterConfig.fields.status.type,
+  members: adapterConfig.members,
+  jihyeCalloutId: adapterConfig.members.find(m => m.name === '지혜')?.calloutId || null,
 };
 
-const cfg = CONFIG[PM];
 const LAUNCH = new Date(cfg.launchDate);
-const DDAY = Math.ceil((LAUNCH - now) / (1000 * 60 * 60 * 24));
+const DDAY = meta.dday;
 
 // ── 블록 빌더 ────────────────────────────────────────────
 const mkBullet = (text, bold = false, color = 'default') => ({
@@ -355,4 +339,38 @@ blocks.push({
 
 await appendBlocks(startToggleId, blocks);
 console.log(`✅ 브리핑 초안 작성 완료 → ${TODAY_LABEL} (${TODAY_DAY}) D-${DDAY}`);
+
+// ── 디버그 로그 (맥 노트에 기록) ──────────────────────────
+try {
+  const { execSync } = await import('child_process');
+  const notesScript = `${process.env.HOME}/Documents/claude_skills/app_notes_control/app_notes_control.py`;
+  const logLines = [
+    `[${new Date().toLocaleString('ko-KR')}] ${cfg.label} 아침 브리핑`,
+    `  프로젝트 DB: ${cfg.projectDbId}`,
+    `  조회 결과 — 진행중:${inProg.length} 막힘:${blocked.length} 대기:${waiting.length}`,
+    `  브리핑 DB: ${cfg.briefingDbId} → 페이지 작성 완료`,
+    `  D-day: ${DDAY}`,
+    `  주간목표: ${weeklyGoalLines.length}줄 읽음`,
+    `  전날 마감: ${eodLines.length}줄 읽음`,
+    `  배정: ${cfg.members.map(m => m.name).join(', ')}`,
+    `  상태: ✅ 성공`,
+    `---`,
+    `💡 이 로그를 끄려면: 터미널에서 "디버그 로그 꺼줘" 라고 말하세요.`
+  ].join('\\n');
+  execSync(`python3 "${notesScript}" --append --title "PM 시스템 디버그 로그" --body "${logLines}"`,
+    { encoding: 'utf8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] });
+} catch { /* 로그 실패는 무시 */ }
+
+// ── 타임라인 자동 동기화 (브리핑과 함께 실행) ────────────
+try {
+  const { execSync } = await import('child_process');
+  const syncScript = new URL('./adapter/lib/timeline-sync.js', import.meta.url).pathname;
+  console.log(`📋 ${PM.toUpperCase()}_timeline 동기화 중...`);
+  const syncResult = execSync(`node "${syncScript}" --pm ${PM}`, { encoding: 'utf8', timeout: 30000 });
+  const resultLine = syncResult.split('\n').find(l => l.includes('결과:'));
+  if (resultLine) console.log(`  ${resultLine.trim()}`);
+} catch (e) {
+  console.log(`  ⚠️ 타임라인 동기화 스킵: ${e.message?.split('\n')[0] || e}`);
+}
+
 console.log(`📋 브리핑 검토 후 "실제 콜아웃 전송해줘" 입력하면 업무 배정됩니다.`);
