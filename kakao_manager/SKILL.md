@@ -114,14 +114,22 @@ $ALIAS_RUN kakao_read.py "채팅방" --scroll-down 5 --date 2026-06-01 --json --
 ```
 
 ### 메시지 보내기 (텍스트)
+
+> ⚠️ **권장 = `send_safe.py`만 사용**. 외부 플러그인 `kakao_send.py`는 검색 silent 실패 시 `after_windows[0]` 폴백 → 잘못된 채팅방으로 발송되는 알려진 버그가 있다 (2026-06-01 실측). `send_safe.py`는 fingerprint 가드(요청 chat_name과 실제 열린 창의 AXTitle 일치 검증)가 있어 잘못 발송을 차단한다.
+
+**권장**:
 ```bash
-$ALIAS_RUN kakao_send.py "채팅방" "메시지"
-# 옵션: --no-signature, --close, --json
+python3 $HOME/.claude/skills/kakao_manager/scripts/send_safe.py "채팅방" --text "메시지"
+# 옵션:
+#   --verify-me      (나) 본인 채팅인지 'badge me' AXImage로 검증
+#   --strict-name    채팅방 이름 정규화 토큰 단어 단위 정확 일치 강제 (안전 ↑↑)
+#   --no-signature   서명 제외
+#   --json           JSON 출력
 ```
 
-또는 본 스킬에 동봉된 send_safe.py (가드 강화 버전):
+**비권장 (직접 사용 X)**:
 ```bash
-python3 $HOME/.claude/skills/kakao_manager/scripts/send_safe.py "채팅방" --text "메시지" --verify-me
+$ALIAS_RUN kakao_send.py "채팅방" "메시지"  # ← 잘못 발송 위험. 검증 후에만 한정 사용.
 ```
 
 ### 이미지 전송 (PNG 클립보드 paste 방식)

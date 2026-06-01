@@ -143,6 +143,31 @@ def normalize_chat_name(name):
     return n.strip()
 
 
+def match_chat_name(actual_title, requested, strict=False):
+    """fingerprint 일치 검증. requested가 actual_title에 의미있게 포함되는지.
+    - strict=False (관대): substring 매치 (대소문자 무관). 정규화 토큰 매치도 OK.
+    - strict=True (엄격): 정규화 토큰이 완전 일치하거나, requested가 actual의 정규화 토큰에 완전 포함.
+    """
+    if not actual_title or not requested:
+        return False
+    a = actual_title.strip().lower()
+    r = requested.strip().lower()
+    if not strict:
+        if r in a:
+            return True
+        ra, rr = normalize_chat_name(actual_title).lower(), normalize_chat_name(requested).lower()
+        return bool(rr and rr in ra)
+    # strict
+    ra, rr = normalize_chat_name(actual_title).lower(), normalize_chat_name(requested).lower()
+    if not rr:
+        return False
+    if ra == rr:
+        return True
+    # requested의 정규화 토큰이 actual에 단어 단위로 들어있는지
+    # (예: "신현빈"이 "[세무관련] 고야"엔 없음, "신현빈 대표님 IP_Team"엔 있음)
+    return rr in ra and any(token == rr for token in re.split(r"\s+", ra))
+
+
 def search_and_open(chat_name):
     """카톡 검색으로 채팅창 열기."""
     ascript('tell application "KakaoTalk" to activate')
@@ -279,8 +304,29 @@ def run(args):
     if not chat_win:
         return {"ok": False, "error": "채팅창 못 찾음", "chat": args.chat, "tried_norm": tried_norm}
 
+    # === Step 2.5: fingerprint 가드 ===
+    # 열려있는 chat_win의 AXTitle이 사용자가 요청한 args.chat과 의미있게 일치하는지 재검증.
+    # plugin의 위험한 fallback(`after_windows[0]` 임의 선택)으로 다른 창에 잘못 보내는 사고 차단.
+    actual_title = chat_win.AXTitle
+    if not match_chat_name(actual_title, args.chat, strict=args.strict_name):
+        return {
+            "ok": False,
+            "error": f"fingerprint 불일치: 열린 창='{actual_title}' / 요청='{args.chat}' (strict={args.strict_name})",
+            "chat": actual_title,
+            "requested": args.chat,
+        }
+
     # === Step 3: raise + focus ===
     chat_win = raise_chat_window(app, chat_win.AXTitle) or chat_win
+    # raise 후 다시 한 번 AXTitle 확인 (창 전환 race 차단)
+    actual_title2 = chat_win.AXTitle
+    if not match_chat_name(actual_title2, args.chat, strict=args.strict_name):
+        return {
+            "ok": False,
+            "error": f"raise 후 fingerprint 불일치: 열린 창='{actual_title2}' / 요청='{args.chat}'",
+            "chat": actual_title2,
+            "requested": args.chat,
+        }
     if not focus_input(chat_win):
         return {"ok": False, "error": "입력란 포커스 실패", "chat": chat_win.AXTitle}
 
@@ -324,6 +370,7 @@ def main():
     g.add_argument("--image", "-i", help="이미지 파일 경로 (.png 권장)")
     g.add_argument("--file", "-f", help="파일 경로 (.txt/.pdf/.xlsx 등)")
     p.add_argument("--verify-me", action="store_true", help="(나) 본인 채팅인지 'badge me'로 검증 후 발송")
+    p.add_argument("--strict-name", action="store_true", help="채팅방 이름 fingerprint 엄격 매치 (정규화 토큰 단어 단위 일치)")
     p.add_argument("--no-signature", action="store_true", help="텍스트에 'sent with claude code' 시그니처 빼기")
     p.add_argument("--json", "-j", action="store_true", help="JSON 출력")
     args = p.parse_args()

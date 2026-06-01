@@ -44,6 +44,14 @@ fi
 
 확인: `$HOME/.local/bin/uv --version`
 
+> ⚠️ **PATH 주입 주의**: 일부 uv 버전(0.11+)은 `$HOME/.local/bin/env` 파일을 생성하지 않음.
+> 그래서 `source $HOME/.local/bin/env`가 No such file 에러를 낼 수 있다.
+> 대신 다음을 사용:
+> ```bash
+> export PATH="$HOME/.local/bin:$PATH"
+> ```
+> 또는 이후 명령에서 uv를 `$HOME/.local/bin/uv ...` 풀 경로로 직접 호출.
+
 ---
 
 ## Step 3. (자동) plugins-for-claude-natives 클론
@@ -70,7 +78,7 @@ ls "$HOME/github/plugins-for-claude-natives/plugins/kakaotalk/scripts/"
 ### 자동 점검
 
 ```bash
-source $HOME/.local/bin/env
+export PATH="$HOME/.local/bin:$PATH"
 uv run --with atomacos --python 3.12 python -c "
 import atomacos
 app = atomacos.getAppRefByBundleId('com.kakao.KakaoTalkMac')
@@ -81,8 +89,36 @@ except Exception as e:
 "
 ```
 
-- `OK` 나오면 권한 ✅ 통과 — Step 5로
-- `PERM_NEEDED` 또는 에러 나오면 아래 안내
+결과별 처치:
+
+| 출력 | 의미 | 처치 |
+|---|---|---|
+| `OK` | 접근성 권한 + 카톡 창 모두 정상 | Step 5로 |
+| `NO_WINDOW` | **권한은 OK인데 카톡 주창이 최소화/Dock에 들어가 있음** | 카톡 주창을 띄워야 함 (아래 NO_WINDOW 처치) |
+| `PERM_NEEDED: ...` | macOS 접근성 권한 없음 | 사용자 수동 토글 (아래 PERM_NEEDED 처치) |
+| 다른 에러 | atomacos 설치 안 됐거나 카톡 안 떠있음 | 메시지 따라 처치 |
+
+### NO_WINDOW 처치 (자동)
+
+카톡 주창을 띄워서 atomacos가 보이게 만든다.
+
+```bash
+osascript -e 'tell application "KakaoTalk" to activate'
+sleep 0.5
+osascript -e 'tell application "System Events" to tell process "KakaoTalk" to key code 18 using {command down}'  # Cmd+1 = 친구 탭 (주창 등장)
+sleep 0.7
+# 재점검
+export PATH="$HOME/.local/bin:$PATH"
+uv run --with atomacos --python 3.12 python -c "
+import atomacos
+app = atomacos.getAppRefByBundleId('com.kakao.KakaoTalkMac')
+print('OK' if app.windows() else 'STILL_NO_WINDOW')
+"
+```
+
+`OK` 나오면 Step 5로. `STILL_NO_WINDOW`면 사용자에게 "카톡 창을 한 번 클릭해서 띄워주세요" 안내 후 재점검.
+
+### PERM_NEEDED 처치
 
 ### 사용자에게 안내
 
