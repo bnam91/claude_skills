@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "_comment": "공용 스킬 카탈로그. 한 스킬당 tag 1개. 태그는 자유롭게 추가 가능 (예: onboarding, browser, dev, coupang 등)",
+  "skills": {
+    "chrome-cdp": {
+      "description": "Chrome CDP 디버깅 포트 관리. Apple Silicon arm64 가드 + 9225 default 포트 포함",
+      "tag": "onboarding"
+    },
+    "sheet_manager": {
+      "description": "Google Sheets를 읽고/쓰고/수정하는 스킬. 사용자가 \"시트 읽어줘\", \"구글시트에 써줘\", \"탭 목록\", \"스프레드시트 행 추가\", \"시트 범위 삭제\", \"구글 시트 업데이트\" 등을 말할 때 실행해.",
+      "tag": "onboarding"
+    },
+    "notes_manager": {
+      "description": "맥 노트(Notes) 앱을 제어하는 스킬. macOS 전용. 노트 목록/조회/생성/추가/삭제/검색을 처리해.",
+      "tag": "onboarding"
+    },
+    "notion_manager": {
+      "description": "Notion 페이지/데이터베이스를 읽고, 쓰고, 수정하는 스킬. 본인 Notion API 키와 Integration 연결 필요.",
+      "tag": "onboarding"
+    },
+    "reminder_manager": {
+      "description": "맥 미리알림(Reminders) 앱을 제어하는 스킬. macOS 전용. 목록 조회, 항목 추가, 섹션 지정, 깃발 조회, 우선순위 변경 처리.",
+      "tag": "onboarding"
+    },
+    "gdrive_manager": {
+      "description": "Google Drive를 인덱스 아키텍처 규칙에 맞춰 관리하는 스킬. 폴더/파일 조회 및 검색, 별칭 등록 지원.",
+      "tag": "onboarding"
+    },
+    "gmail_manager": {
+      "description": "Gmail 계정을 관리하는 스킬. 여러 계정을 config로 관리하고 메일 읽기/목록 조회/휴지통 이동을 처리해.",
+      "tag": "onboarding"
+    },
+    "calendar_manager": {
+      "description": "맥 캘린더(Calendar) 앱을 제어하는 스킬. macOS 전용. 일정 조회/추가/삭제, 캘린더 목록 확인을 처리해.",
+      "tag": "onboarding"
+    },
+    "bank_manager": {
+      "description": "Google Sheets에 입금요청을 등록하는 스킬. 자주 쓰는 거래처를 별칭으로 등록해 두면 계좌 자동 매핑.",
+      "tag": "onboarding"
+    },
+    "hometax_manager": {
+      "description": "홈택스용 세금계산서/거래처 시트를 관리하는 스킬. 본인 회사 상호와 시트 정보를 스크립트에 입력 후 사용.",
+      "tag": "onboarding"
+    },
+    "ads-manager": {
+      "description": "쿠팡 광고 관리 스킬. NotebookLM 강의 조회, chrome-cdp 9341 포트로 광고센터 자동화, 핵심 광고 원칙 가이드 포함.",
+      "tag": ""
+    },
+    "ads-manager-app": {
+      "description": "쿠팡 광고 계산기 HTML 앱을 여는 스킬. ad-calculator.html 번들 포함, 별도 세팅 불필요.",
+      "tag": ""
+    },
+    "nlm": {
+      "description": "NotebookLM 노트북을 alias로 빠르게 열거나 질문하는 단축어 스킬. nlm CLI(notebooklm-mcp-cli) 설치 + Google OAuth + 본인 alias 등록 필요.",
+      "tag": ""
+    },
+    "telegram-send": {
+      "description": "goagent_bot으로 본인에게 텔레그램 메시지를 보내는 스킬 (본인 멀티맥 동기화용). ~/Documents/github_cloud/module_telegram/ 모듈을 다른 맥에서 복사해 와야 동작.",
+      "tag": ""
+    },
+    "tele-code": {
+      "description": "텔레그램(또는 현재 세션)에서 받은 메시지를 특정 tmux 세션(다른 Claude Code 터미널)으로 전달하는 스킬. tmux send-keys 기반, 외부 의존성은 tmux만 필요. 인자 없으면 활성 tmux 세션 목록만 출력.",
+      "tag": ""
+    },
+    "coupang-manager": {
+      "description": "쿠팡 Wing 셀러센터를 자동화하는 스킬. 송장입력·반품·CS·재고확인·KYC·입고생성 등을 /wing 명령어로 처리. chrome-cdp(9222) + 본인 Wing CDP 프로필(~/github/user_data/coupangWing_<별칭>) + ~/.coupang-manager/identity.json(0600) 필요. 첫 사용 시 heyclaude.md 따라 세팅.",
+      "tag": "commerce"
+    },
+    "kakao_manager": {
+      "description": "카카오톡 Mac 앱을 Claude Code 터미널에서 직접 조작하는 매니저 스킬. 채팅방 검색/목록/메시지 읽기/요약/메시지·이미지 전송/(나) 자기채팅 식별/자동 로그인을 일관된 방식으로 처리.",
+      "tag": "admin"
+    }
+  }
+}
