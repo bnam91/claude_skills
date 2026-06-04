@@ -47,6 +47,34 @@ def get_sheet_gid(sheet_id: str, tab: str) -> int | None:
     return None
 
 
+def _col_letters_to_num(letters: str) -> int:
+    n = 0
+    for ch in letters.upper():
+        n = n * 26 + (ord(ch) - 64)
+    return n
+
+
+def ensure_grid(sheet_id: str, tab: str, need_col_letter: str, need_rows: int = 0):
+    """그리드 columnCount/rowCount가 부족하면 자동 확장 (write 전 호출). 컬럼 여유 +26."""
+    svc = get_sheets_svc()
+    meta = svc.spreadsheets().get(spreadsheetId=sheet_id).execute()
+    sheet = next((s for s in meta.get('sheets', []) if s['properties']['title'] == tab), None)
+    if not sheet:
+        return
+    props = sheet['properties']; gp = props.get('gridProperties', {})
+    cur_rows, cur_cols = gp.get('rowCount', 0), gp.get('columnCount', 0)
+    need_cols = _col_letters_to_num(need_col_letter)
+    new_rows = need_rows + 100 if need_rows > cur_rows else cur_rows
+    new_cols = need_cols + 26 if need_cols > cur_cols else cur_cols
+    if new_rows == cur_rows and new_cols == cur_cols:
+        return
+    svc.spreadsheets().batchUpdate(spreadsheetId=sheet_id, body={'requests':[
+        {'updateSheetProperties':{'properties':{'sheetId':props['sheetId'],
+            'gridProperties':{'rowCount':new_rows,'columnCount':new_cols}},
+            'fields':'gridProperties.rowCount,gridProperties.columnCount'}}]}).execute()
+    print(f"  📐 그리드 자동확장 {tab}: {cur_rows}x{cur_cols} → {new_rows}x{new_cols}")
+
+
 def apply_stock_colors(sheet_id: str, tab: str, col_letter: str, row_value_pairs: list[tuple[int, str]]):
     """증감 결과에 따라 셀 텍스트 색상 적용
     - (+N) 빨간색 (경쟁사 재고 증가 = 위험)
@@ -122,7 +150,7 @@ def col_index_to_letter(idx: int) -> str:
 
 def find_next_stock_col(sheet_id: str, tab: str) -> tuple[str, str | None]:
     """J열부터 헤더 스캔해서 (다음 빈 열 문자, 직전 열 문자 or None) 반환"""
-    header_data = sm.read(sheet_id, tab, 'J1:AZ1')
+    header_data = sm.read(sheet_id, tab, 'J1:ZZZ1')
     header_row = header_data[0] if header_data else []
     last_filled = -1
     for i, cell in enumerate(header_row):
@@ -229,6 +257,7 @@ def write_results(user: dict, col: str, prev_col: str | None, row_vid_map: dict[
 
     # 헤더 + 전체 데이터 한 번에 batchUpdate
     data = [{'range': f"{user['tab']}!{col}1", 'values': [[now_str]]}]
+    max_row = 1
     for row_num, vid in row_vid_map.items():
         if vid in stock_results:
             qty = stock_results[vid]['stockQuantity']
@@ -237,6 +266,10 @@ def write_results(user: dict, col: str, prev_col: str | None, row_vid_map: dict[
             value = 'ERROR'
         data.append({'range': f"{user['tab']}!{col}{row_num}", 'values': [[value]]})
         color_targets.append((row_num, value))
+        if row_num > max_row: max_row = row_num
+
+    # 그리드 부족 시 자동 확장 (write 전)
+    ensure_grid(user['sheet_id'], user['tab'], col, max_row)
 
     get_sheets_svc().spreadsheets().values().batchUpdate(
         spreadsheetId=user['sheet_id'],
