@@ -115,8 +115,9 @@ def launch_chrome() -> bool:
     return False
 
 
-def get_wing_tab() -> str | None:
-    """Wing 탭 ID 반환. CDP 없으면 Chrome 자동 실행. 탭 없으면 자동 생성."""
+def get_wing_tab(force_new: bool = False) -> str | None:
+    """Wing 탭 ID 반환. CDP 없으면 Chrome 자동 실행. 탭 없으면 자동 생성.
+    force_new=True: 기존 Wing 탭 무시하고 새 탭+자동로그인 강제 (세션 죽음 복구용)."""
     # CDP 접근 안 되면 Chrome 실행
     try:
         requests.get('http://localhost:9222/json', timeout=2).json()
@@ -127,9 +128,10 @@ def get_wing_tab() -> str | None:
 
     try:
         tabs = requests.get('http://localhost:9222/json', timeout=5).json()
-        for t in tabs:
-            if 'wing.coupang.com' in t.get('url', '') and t.get('type') == 'page':
-                return t['id']
+        if not force_new:
+            for t in tabs:
+                if 'wing.coupang.com' in t.get('url', '') and t.get('type') == 'page':
+                    return t['id']
 
         # Wing 탭 없으면 새 탭 열고 이동
         print("📂 Wing 탭 없음 → 자동 생성 중...")
@@ -231,10 +233,11 @@ def get_wing_tab() -> str | None:
 
 # ── 3. Chrome 브라우저에서 직접 fetch (봇 방어 우회) ─────────────────────────
 
-def get_stock_via_cdp(vendor_item_ids: list[int]) -> dict[int, dict]:
+def get_stock_via_cdp(vendor_item_ids: list[int], _retried: bool = False) -> dict[int, dict]:
     """
     Chrome CDP를 통해 브라우저 컨텍스트에서 직접 fetch.
     봇 방어(Akamai)를 브라우저 핑거프린트로 우회.
+    빈 응답 시 1회에 한해 Wing 탭 강제 재생성(+자동 로그인) 후 재시도.
     """
     tab_id = get_wing_tab()
     if not tab_id:
@@ -274,7 +277,18 @@ def get_stock_via_cdp(vendor_item_ids: list[int]) -> dict[int, dict]:
 
     raw = result.get('result', {}).get('result', {}).get('value', '')
     if not raw:
-        raise RuntimeError("빈 응답")
+        if _retried:
+            raise RuntimeError("빈 응답 (재로그인 후 재시도도 실패)")
+        # Wing 세션 죽음 가능성 → 기존 탭 닫고 강제 재로그인 후 1회 재시도
+        print("⚠️  빈 응답 감지 → Wing 세션 재시작 시도 중...")
+        try:
+            requests.put(f'http://localhost:9222/json/close/{tab_id}', timeout=5)
+        except Exception as e:
+            print(f"[WARN] Wing 탭 닫기 실패 (무시): {e}")
+        time.sleep(1)
+        if not get_wing_tab(force_new=True):
+            raise RuntimeError("재로그인 실패 (force_new)")
+        return get_stock_via_cdp(vendor_item_ids, _retried=True)
 
     data = json.loads(raw)
     if 'error' in data:
