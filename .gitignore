@@ -5,3 +5,4 @@ tokens/
 .env
 node_modules/
 gmail_manager/tokens_stuck_icloud/
+claude-talk-to-figma-mcp/
