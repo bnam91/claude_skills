@@ -1,0 +1,5 @@
+{
+  "status": "error",
+  "error": "net::ERR_INTERNET_DISCONNECTED at https://www.google.com",
+  "time": "2026-06-12T01:04:10.200Z"
+}

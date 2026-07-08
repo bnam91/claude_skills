@@ -14,7 +14,7 @@ import { getChildren, appendBlocks, appendParagraph, getText, deleteBlock, updat
 const CALLOUTS = {
   '지혜':   '2f1111a5-7788-81e0-b79e-ec85bbc540c5',
   '현빈02': '2f1111a5-7788-8127-951b-c2b17188efff', // 사업체02에서 현빈이 수현 이름으로 활동
-  '수지':   '2e6111a5-7788-80a6-a2f7-cfca611ea5b7',
+  '수지':   '2d369b19-f3a4-4e49-84d3-8c0c08d9bb1f',
   '현빈':   '8bcea4ed47cb46ae90d7dfa888e09c16'
 };
 

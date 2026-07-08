@@ -4,3 +4,4 @@ __pycache__/
 tokens/
 .env
 node_modules/
+gmail_manager/tokens_stuck_icloud/

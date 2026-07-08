@@ -1,0 +1,5 @@
+{
+  "status": "error",
+  "error": "net::ERR_QUIC_PROTOCOL_ERROR at https://www.google.com",
+  "time": "2026-06-13T01:04:32.920Z"
+}

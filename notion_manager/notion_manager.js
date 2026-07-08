@@ -16,8 +16,9 @@ function loadConfig() {
     // 필수 항목 체크
     const missing = [];
     if (!config.api_key || config.api_key.startsWith('secret_여기에')) missing.push('api_key');
-    if (!config.my_task_toggle_url || config.my_task_toggle_url.includes('내_업무요청')) missing.push('my_task_toggle_url (내 업무요청 토글 URL)');
-    if (!config.colleagues?.length || config.colleagues[0].task_toggle_url.includes('동료_업무요청')) missing.push('colleagues (동료 업무요청 토글 URL)');
+    // my_task_toggle_url, colleagues 는 '내 업무요청 토글' 전용 기능에만 필요 →
+    // 범용 API(query-db/append-text/get-page/search 등)엔 불필요하므로 필수 체크에서 제외.
+    // (무인/서버 운영 안정성: api_key만 있으면 동작)
 
     if (missing.length > 0) {
       console.log('⚠️  notion_manager 초기 설정이 필요해요.\n');
@@ -95,6 +96,10 @@ export async function appendText(pageId, text) {
   });
 }
 
+export async function appendBlocks(pageId, children) {
+  return request('PATCH', `/blocks/${pageId}/children`, { children });
+}
+
 export async function deletePage(pageId) {
   return request('PATCH', `/pages/${pageId}`, { archived: true });
 }
@@ -141,6 +146,19 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
       const blocks = await getPageContent(id);
       blocks.forEach(b => console.log(`[${b.type}] ${getText(b)}`));
     },
+    'get-title': async () => {
+      // 페이지 제목만 한 줄 출력 (본문 블록 안 읽음 → 폴링 게이트용 초경량 조회)
+      const page = await getPage(id);
+      console.log(getTitle(page));
+    },
+    'set-title': async () => {
+      // 페이지 제목 갱신 (비콘 wait 토큰 등). title 타입 property 키를 자동 탐색.
+      const page = await getPage(id);
+      const titleKey = Object.keys(page.properties || {})
+        .find(k => page.properties[k].type === 'title') || 'title';
+      await updatePage(id, { [titleKey]: { title: [{ text: { content: rest.join(' ') } }] } });
+      console.log('제목 갱신 완료');
+    },
     'query-db': async () => {
       const data = await queryDatabase(id);
       data.results.forEach(p => console.log(`- ${getTitle(p)} | ${p.id}`));
@@ -161,7 +179,7 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
 
   if (!actions[action]) {
     console.log('사용법: node notion_manager.js <action> <id> [args]');
-    console.log('actions: get-page, get-content, query-db, append-text, search, delete-page');
+    console.log('actions: get-page, get-content, get-title, set-title, query-db, append-text, search, delete-page');
     process.exit(1);
   }
 

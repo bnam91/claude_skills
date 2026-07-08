@@ -27,7 +27,7 @@
 
   "members": [
     { "name": "현빈02", "calloutId": "2f1111a577888127951bc2b17188efff", "role": "blocker+p1" },
-    { "name": "지혜",   "calloutId": "2f1111a5778881e0b79eec85bbc540c5", "role": "today" }
+    { "name": "지혜",   "calloutId": "d4efb134071745e8ae8097ba9792f3c4", "role": "today" }
   ],
 
   "launchDate": "2026-04-03",

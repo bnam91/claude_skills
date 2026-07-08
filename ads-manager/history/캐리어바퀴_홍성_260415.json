@@ -1,0 +1,66 @@
+{
+  "campaign_id": "104839190",
+  "campaign_name": "캐리어바퀴_홍성_260415",
+  "group_id": "205249311",
+  "records": [
+    {
+      "date": "2026-04-15",
+      "settings": {
+        "daily_budget": 100000,
+        "target_roas": 1000,
+        "status": "ON"
+      },
+      "performance": {
+        "ad_spend": 523,
+        "ad_revenue": 29600,
+        "actual_roas": 5659.66,
+        "impressions": null,
+        "clicks": 5,
+        "ctr": 0.35,
+        "conversion_rate": 20.0,
+        "conv_sales": null,
+        "conv_orders": null
+      },
+      "note": "ROAS 1500% → 1000%로 낮춤 (첫 기록)"
+    },
+    {
+      "date": "2026-04-16",
+      "settings": {
+        "target_roas": 700,
+        "status": "ON"
+      },
+      "performance": {
+        "ad_spend": 1313,
+        "ad_revenue": 0,
+        "actual_roas": 0.0,
+        "impressions": null,
+        "clicks": 12,
+        "ctr": 0.3,
+        "conversion_rate": 0.0,
+        "conv_sales": 0,
+        "conv_orders": 0
+      },
+      "note": "광고전환매출 0 (노출은 있었으나 전환 없음) / 목표ROAS 1000% → 700%로 조정"
+    },
+    {
+      "date": "2026-04-17",
+      "settings": {
+        "daily_budget": 100000,
+        "target_roas": 700,
+        "status": "ON"
+      },
+      "performance": {
+        "ad_spend": 3932,
+        "ad_revenue": 23600,
+        "actual_roas": 600.2,
+        "impressions": 6447,
+        "clicks": 17,
+        "ctr": 0.26,
+        "conversion_rate": 5.88,
+        "conv_sales": 2,
+        "conv_orders": 1
+      },
+      "note": "목표ROAS 700% 미달(600.2%) / CPC 231원으로 한계CPC 147원 초과 / 노출 6,447회로 전일 대비 60%↑ / 전환 2건(주문 1건) — 학습 중으로 판단, 유지"
+    }
+  ]
+}

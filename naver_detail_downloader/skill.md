@@ -47,6 +47,31 @@ mcp__chrome-devtools__evaluate_script(function="""() => {
 
 ### 3단계: 이미지 다운로드
 
+이미지 URL은 반드시 **페이지 Y좌표 기준 정렬** 후 저장 (lazy load로 인한 순서 뒤섞임 방지):
+
+```python
+# urls는 evaluate_script에서 아래 방식으로 추출
+# [{"url": "...", "top": 123}, ...] 형태로 top 포함 추출 후 정렬
+urls_sorted = sorted(urls_with_top, key=lambda x: x["top"])
+urls = [item["url"] for item in urls_sorted]
+```
+
+evaluate_script에서 top 포함 추출:
+```javascript
+() => {
+  const imgs = document.querySelectorAll('<셀렉터>');
+  return Array.from(imgs)
+    .map(img => ({
+      url: img.src || img.getAttribute('data-src'),
+      top: img.getBoundingClientRect().top + window.scrollY
+    }))
+    .filter(item => item.url && item.url.startsWith('http'))
+    .sort((a, b) => a.top - b.top)
+    .map(item => item.url);
+}
+```
+
+다운로드:
 ```python
 import urllib.request, ssl, os
 
@@ -66,8 +91,28 @@ for i, url in enumerate(urls, 1):
 
 ## 저장 위치
 
-- 기본: `~/Downloads/detail_<상품명 또는 타임스탬프>/`
+- 기본: `~/Downloads/div_download/<폴더명>/`
 - 사용자가 경로 지정 시 해당 경로 사용
+
+### 폴더명 결정 규칙
+
+페이지에서 상품 타이틀을 읽은 뒤 MCP가 아래 기준으로 폴더명을 직접 판단해:
+
+1. **브랜드명이 있으면** → `브랜드_핵심키워드` (예: `세이프본_무릎보호대`)
+2. **브랜드명이 없으면** → 상품 타이틀에서 핵심 명사 1~2개 (예: `무릎보호대`, `항균마스크_50매`)
+3. **판단 불가 시** → URL의 상품 ID 사용 (예: `8461675977`)
+
+**규칙:**
+- 최대 20자 이내
+- 공백은 `_`로 치환
+- 특수문자·괄호·모델번호·수식어(고탄력, 슬개골 등 부가설명) 제거
+- 파일시스템에 안전한 문자만 사용
+
+## 파일명 규칙
+
+- 형식: `01.png`, `02.png` ... (2자리 순번 + 실제 확장자)
+- GIF → `.gif` / PNG → `.png` / 나머지 → `.jpg`
+- Y좌표(`getBoundingClientRect().top + scrollY`) 기준 정렬 후 순번 부여
 
 ## 주의사항
 

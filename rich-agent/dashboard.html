@@ -1,0 +1,2408 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>1000억보드</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --line-soft: #f3f4f6;
+    --accent: #1e3a8a;
+    --accent-soft: #eef2ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Pretendard", "SF Pro KR", "Inter", sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    font-size: 14px;
+    line-height: 1.6;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 56px 32px 96px; }
+  header { margin-bottom: 40px; }
+  .title { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  .tabs { display: flex; gap: 24px; border-bottom: 1px solid var(--line); margin-bottom: 32px; }
+  .tab { padding: 10px 0; cursor: pointer; color: var(--muted); font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab.active { color: var(--fg); border-bottom-color: var(--fg); font-weight: 500; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .section { margin-bottom: 48px; }
+  .section-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .section-desc { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+
+  /* KPI */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
+  .kpi { padding: 16px; border: 1px solid var(--line); border-radius: 4px; }
+  .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .kpi-value { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .kpi-bar { height: 3px; background: var(--line-soft); border-radius: 2px; margin-top: 10px; overflow: hidden; }
+  .kpi-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+
+  /* 메인 — 큰 카드 (현재 상태) */
+  .now-card { padding: 20px; border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 4px; margin-bottom: 24px; }
+  .now-label { font-size: 11px; color: var(--accent); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+  .now-title { font-size: 17px; font-weight: 600; margin: 4px 0; }
+  .now-meta { font-size: 12px; color: var(--muted); }
+  .now-progress { margin-top: 12px; display: flex; align-items: center; gap: 12px; }
+  .now-progress-bar { flex: 1; height: 6px; background: white; border-radius: 3px; overflow: hidden; }
+  .now-progress-fill { height: 100%; background: var(--accent); }
+
+  /* 주간 체크리스트 */
+  .week-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+  .week-progress-text { font-size: 12px; color: var(--muted); }
+  .checklist { border: 1px solid var(--line); border-radius: 4px; }
+  .check-item { padding: 10px 14px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+  .check-item:last-child { border-bottom: none; }
+  .check-item.done { opacity: 0.45; text-decoration: line-through; }
+  .check-box { width: 16px; height: 16px; border: 1.5px solid var(--line); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
+  .check-item.done .check-box { background: var(--fg); border-color: var(--fg); color: white; }
+  .check-item.done .check-box::after { content: "✓"; }
+  .check-prio { font-size: 13px; }
+  .check-task { flex: 1; }
+  .check-project { font-size: 11px; color: var(--muted); padding: 2px 6px; border: 1px solid var(--line); border-radius: 3px; }
+
+  /* Phase Timeline */
+  .phases { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .phase { padding: 16px; border: 1px solid var(--line); border-radius: 4px; position: relative; }
+  .phase.current { border-color: var(--accent); background: var(--accent-soft); }
+  .phase-num { font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: 0.08em; }
+  .phase.current .phase-num { color: var(--accent); }
+  .phase-name { font-size: 15px; font-weight: 600; margin: 4px 0 2px; }
+  .phase-period { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+  .phase-target { font-size: 12px; font-weight: 500; padding: 4px 6px; background: var(--bg); border: 1px solid var(--line); border-radius: 3px; display: inline-block; margin-bottom: 10px; }
+  .phase.current .phase-target { background: white; }
+  .phase-actions { font-size: 11px; color: var(--muted); }
+  .phase-actions li { margin: 3px 0; padding-left: 10px; position: relative; list-style: none; }
+  .phase-actions li::before { content: "·"; position: absolute; left: 2px; }
+  .phase-marker { position: absolute; top: -8px; right: 14px; background: var(--accent); color: white; font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+
+  /* 분기 */
+  .quarter-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .quarter { padding: 14px; border: 1px solid var(--line); border-radius: 4px; position: relative; }
+  .quarter.q-past { opacity: 0.55; }
+  .quarter.q-prep { border-color: #d1d5db; }
+  .quarter.q-harvest { border-color: var(--accent); background: var(--accent-soft); }
+  .quarter.q-peak { border-color: #1e3a8a; background: #1e3a8a; color: white; }
+  .quarter.q-peak .q-label, .quarter.q-peak .q-month, .quarter.q-peak .q-note { color: rgba(255,255,255,0.85); }
+  .quarter.q-peak .q-bar-wrap { background: rgba(255,255,255,0.2); }
+  .quarter.q-peak .q-bar { background: white; }
+  .q-phase-badge { position: absolute; top: -8px; left: 12px; font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500; background: var(--bg); border: 1px solid var(--line); }
+  .quarter.q-harvest .q-phase-badge { background: var(--accent); color: white; border-color: var(--accent); }
+  .quarter.q-peak .q-phase-badge { background: white; color: #1e3a8a; border-color: white; }
+  .q-label { font-size: 11px; color: var(--muted); }
+  .q-target { font-size: 17px; font-weight: 600; margin: 3px 0; }
+  .q-month { font-size: 11px; color: var(--muted); }
+  .q-bar-wrap { margin-top: 10px; height: 4px; background: var(--line-soft); border-radius: 2px; overflow: hidden; }
+  .q-bar { height: 100%; background: var(--fg); }
+  .q-note { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+
+  /* 뷰 토글 (로드맵) */
+  .view-toggle {
+    display: inline-flex;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .view-toggle button {
+    padding: 8px 16px;
+    border: none;
+    background: var(--bg);
+    color: var(--muted);
+    font-size: 13px;
+    cursor: pointer;
+    border-right: 1px solid var(--line);
+    font-family: inherit;
+    transition: background 0.15s, color 0.15s;
+  }
+  .view-toggle button:last-child { border-right: none; }
+  .view-toggle button:hover { background: var(--line-soft); }
+  .view-toggle button.active {
+    background: var(--fg);
+    color: white;
+    font-weight: 500;
+  }
+  .view-content { display: none; }
+  .view-content.active { display: block; }
+
+  /* Monthly ramp 컬러 (phase 별) */
+  .ramp-bar.r-past    { background: #d1d5db; }
+  .ramp-bar.r-prep    { background: #9ca3af; }
+  .ramp-bar.r-harvest { background: var(--accent); }
+  .ramp-bar.r-peak    { background: #1e3a8a; }
+
+  /* Monthly Ramp */
+  .ramp { display: flex; align-items: flex-end; gap: 5px; height: 100px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .ramp-bar { flex: 1; background: var(--fg); border-radius: 2px 2px 0 0; position: relative; }
+  .ramp-bar:hover { opacity: 0.65; }
+  .ramp-bar .bar-tip { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: var(--fg); color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; opacity: 0; pointer-events: none; white-space: nowrap; margin-bottom: 4px; }
+  .ramp-bar:hover .bar-tip { opacity: 1; }
+  .ramp-labels { display: flex; gap: 5px; margin-top: 6px; }
+  .ramp-labels span { flex: 1; text-align: center; font-size: 10px; color: var(--muted); }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--line); font-size: 13px; }
+  th { font-weight: 500; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
+  td.note { color: var(--muted); font-size: 12px; }
+
+  /* Portfolio */
+  .portfolio-row { display: grid; grid-template-columns: 60px 1fr; gap: 12px; align-items: center; margin-bottom: 8px; }
+  .portfolio-year { font-size: 12px; font-weight: 500; color: var(--muted); }
+  .portfolio-stack { display: flex; height: 22px; border-radius: 3px; overflow: hidden; border: 1px solid var(--line); }
+  .portfolio-seg { padding: 0 6px; display: flex; align-items: center; font-size: 11px; color: white; font-weight: 500; }
+  .legend { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); margin-right: 12px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+
+  /* Mandalart 9x9 — 정사각형 셀 */
+  .mandalart-wrap {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    aspect-ratio: 1 / 1;
+  }
+  .mandalart {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-rows: repeat(9, 1fr);
+    gap: 0;
+    background: var(--bg);
+    border: 1px solid var(--fg);
+    border-radius: 4px;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+  }
+  .m-cell {
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .m-cell.block-right-end { border-right: 2px solid var(--fg); }
+  .m-cell.block-bottom-end { border-bottom: 2px solid var(--fg); }
+  .m-cell.last-col { border-right: none; }
+  .m-cell.last-row { border-bottom: none; }
+  .m-cell {
+    background: var(--bg);
+    padding: 4px;
+    font-size: 10.5px;
+    line-height: 1.3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--fg);
+    word-break: keep-all;
+    overflow: hidden;
+  }
+  .m-cell.empty { color: #e5e7eb; font-size: 14px; font-weight: 300; }
+  .m-cell.center {
+    background: var(--fg);
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .m-cell.center .center-sub { font-size: 18px; font-weight: 700; margin-top: 2px; display: block; letter-spacing: -0.02em; }
+  .m-cell.cat-title {
+    color: white;
+    font-weight: 600;
+    font-size: 11px;
+    line-height: 1.25;
+    padding: 3px;
+  }
+  .m-cell.cat-title .cat-amount { font-size: 9px; opacity: 0.9; font-weight: 500; margin-top: 2px; letter-spacing: 0.02em; }
+
+  /* 만다라트 헤더 */
+  .m-summary-wrap { margin-bottom: 16px; }
+  .m-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--line-soft);
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    align-items: center;
+    transition: background 0.15s;
+  }
+  .m-summary:hover { background: #ebedf0; }
+  .m-summary-item { display: flex; align-items: center; gap: 6px; }
+  .m-summary-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .m-summary-name { font-weight: 500; }
+  .m-summary-amount { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .m-summary-total { margin-left: auto; font-weight: 600; }
+  .m-summary-caret { color: var(--muted); font-size: 11px; margin-left: 4px; transition: transform 0.2s; }
+  .m-summary.expanded .m-summary-caret { transform: rotate(180deg); }
+
+  .m-chart-wrap {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, margin-top 0.3s ease;
+    margin-top: 0;
+  }
+  .m-chart-wrap.expanded { max-height: 480px; margin-top: 12px; }
+  .m-chart-inner {
+    padding: 24px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .m-chart-svg svg { display: block; }
+  .m-chart-legend { display: flex; flex-direction: column; gap: 10px; min-width: 180px; }
+  .m-chart-legend-item { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .m-chart-legend-dot { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+  .m-chart-legend-name { flex: 1; font-weight: 500; }
+  .m-chart-legend-pct { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+
+  /* Principles */
+  .principles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .principle { padding: 14px; border: 1px solid var(--line); border-radius: 4px; }
+  .principle-title { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .principle-desc { font-size: 11px; color: var(--muted); }
+
+  /* 원씽 카드 */
+  .onething-card {
+    padding: 24px 28px;
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+    color: white;
+    border-radius: 4px;
+    margin-bottom: 24px;
+  }
+  .onething-label {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    opacity: 0.7;
+    font-weight: 600;
+  }
+  .onething-goal { font-size: 22px; font-weight: 600; margin: 6px 0 4px; letter-spacing: -0.02em; }
+  .onething-why { font-size: 12px; opacity: 0.85; margin-bottom: 16px; line-height: 1.5; }
+  .onething-progress-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; font-size: 12px; }
+  .onething-current { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .onething-deadline { opacity: 0.75; }
+  .onething-bar { height: 6px; background: rgba(255,255,255,0.18); border-radius: 3px; overflow: hidden; }
+  .onething-fill { height: 100%; background: white; border-radius: 3px; transition: width 0.4s; }
+
+  /* 다음 영입 (작은 카드) */
+  .hiring-card {
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 14px 18px;
+    margin-bottom: 24px;
+    background: var(--bg);
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .hiring-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .hiring-list { display: flex; gap: 16px; flex-wrap: wrap; flex: 1; }
+  .hiring-item { display: flex; align-items: baseline; gap: 6px; font-size: 13px; }
+  .hiring-num { font-size: 10px; color: var(--muted); font-weight: 600; }
+  .hiring-role { font-weight: 600; }
+  .hiring-trigger { font-size: 11px; color: var(--muted); }
+
+  /* 필수 미션 (원씽 밑) */
+  .musthave-card {
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    background: var(--bg);
+  }
+  .musthave-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .musthave-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .musthave-item {
+    padding: 12px 14px;
+    background: var(--line-soft);
+    border-radius: 4px;
+  }
+  .musthave-icon { font-size: 18px; margin-bottom: 4px; }
+  .musthave-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; line-height: 1.35; }
+  .musthave-detail { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+  /* 작전 개요 */
+  .strategy-card {
+    padding: 24px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    margin-bottom: 32px;
+    background: var(--bg);
+  }
+  .strategy-toggle {
+    display: inline-flex;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .strategy-toggle button {
+    padding: 6px 14px; border: none; background: var(--bg); color: var(--muted);
+    font-size: 12px; cursor: pointer; border-right: 1px solid var(--line);
+    font-family: inherit;
+  }
+  .strategy-toggle button:last-child { border-right: none; }
+  .strategy-toggle button.active { background: var(--fg); color: white; font-weight: 500; }
+  .strategy-content { display: none; }
+  .strategy-content.active { display: block; }
+  .strategy-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .strategy-title { font-size: 16px; font-weight: 600; }
+  .strategy-summary { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .strategy-pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .pillar { padding: 14px; background: var(--line-soft); border-radius: 4px; }
+  .pillar-icon { font-size: 18px; margin-bottom: 6px; }
+  .pillar-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .pillar-detail { font-size: 11px; color: var(--muted); line-height: 1.5; }
+  .strategy-principles {
+    background: #fafafa;
+    border-radius: 4px;
+    padding: 12px 16px;
+  }
+  .strategy-principles-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+  .strategy-principles ul, .key-missions ul { list-style: none; padding: 0; }
+  .strategy-principles li, .key-missions li {
+    font-size: 12px;
+    padding: 4px 0;
+    padding-left: 14px;
+    position: relative;
+  }
+  .strategy-principles li::before, .key-missions li::before {
+    content: "·";
+    position: absolute;
+    left: 4px;
+  }
+  .key-missions {
+    background: var(--accent-soft);
+    border-radius: 4px;
+    padding: 12px 16px;
+  }
+  .key-missions-label {
+    font-size: 11px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  /* 커머스 트래커 */
+  .commerce-kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
+
+  .stage-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 500;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--muted);
+  }
+  .stage-badge.s-시장조사 { background: #f3f4f6; color: #6b7280; }
+  .stage-badge.s-샘플발주 { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+  .stage-badge.s-샘플검증 { background: #fed7aa; color: #9a3412; border-color: #fdba74; }
+  .stage-badge.s-본품발주 { background: #dbeafe; color: #1e3a8a; border-color: #bfdbfe; }
+  .stage-badge.s-입고    { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
+  .stage-badge.s-등록    { background: #ddd6fe; color: #5b21b6; border-color: #c4b5fd; }
+  .stage-badge.s-광고    { background: #c7d2fe; color: #1e3a8a; border-color: #a5b4fc; }
+  .stage-badge.s-안정    { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+
+  /* SKU 단계 게이지 */
+  .sku-stage-gauge {
+    display: flex;
+    gap: 2px;
+    margin-top: 4px;
+  }
+  .sku-stage-gauge .seg {
+    flex: 1;
+    height: 4px;
+    background: var(--line-soft);
+    border-radius: 2px;
+  }
+  .sku-stage-gauge .seg.filled { background: var(--accent); }
+
+  /* SKU 카드 */
+  .sku-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .sku-section-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 16px 0 8px;
+    font-weight: 600;
+  }
+  .sku-section-label:first-child { margin-top: 0; }
+  .sku-card.existing {
+    border-color: #d1d5db;
+    background: #fafafa;
+  }
+  .existing-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 500;
+    background: #6b7280;
+    color: white;
+    margin-left: 4px;
+    letter-spacing: 0.02em;
+  }
+  .sku-card {
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .sku-card:hover { border-color: var(--muted); }
+  .sku-card.selected {
+    border-color: var(--accent);
+    border-width: 2px;
+    padding: 9px 11px;
+    box-shadow: 0 0 0 3px rgba(30,58,138,0.08);
+  }
+  .sku-card.empty {
+    border-style: dashed;
+    color: #d1d5db;
+    text-align: center;
+    padding: 20px 12px;
+  }
+  .sku-name { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+  .sku-note { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+
+  /* 루틴 체크리스트 */
+  .routine-phase {
+    margin-bottom: 20px;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  .routine-phase-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .routine-phase-title { font-weight: 600; font-size: 13px; }
+  .routine-phase-window { font-size: 11px; color: var(--muted); }
+  .routine-progress { font-size: 11px; color: var(--muted); }
+  .routine-items { list-style: none; padding: 0; }
+  .routine-items li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 13px;
+  }
+  .routine-items li.done { color: var(--muted); text-decoration: line-through; }
+  .routine-items .check-box {
+    width: 14px; height: 14px;
+    border: 1.5px solid var(--line);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+  .routine-items li.done .check-box { background: var(--fg); border-color: var(--fg); color: white; }
+  .routine-items li.done .check-box::after { content: "✓"; }
+
+  /* SKU 사이클 디테일 */
+  .sku-detail-card {
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .stage-row {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .stage-row:last-child { border-bottom: none; }
+  .stage-row.past .stage-num,
+  .stage-row.past .stage-content { background: #f9fafb; color: var(--muted); }
+  .stage-row.current .stage-num { background: var(--accent); color: white; }
+  .stage-row.current .stage-content { background: var(--accent-soft); }
+  .stage-row.future .stage-num,
+  .stage-row.future .stage-content { color: #d1d5db; }
+
+  .stage-num {
+    background: var(--bg);
+    border-right: 1px solid var(--line-soft);
+    padding: 12px 0;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+  .stage-row.past .stage-num { color: var(--muted); }
+  .stage-row.past .stage-num::after { content: " ✓"; }
+
+  .stage-content {
+    padding: 12px 16px;
+    background: var(--bg);
+  }
+  .stage-name {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+  .stage-row.current .stage-name { color: var(--accent); }
+  .stage-actions { font-size: 12px; color: var(--muted); list-style: none; padding: 0; }
+  .stage-actions li { margin: 3px 0; padding-left: 10px; position: relative; }
+  .stage-actions li::before { content: "·"; position: absolute; left: 2px; }
+
+  /* 큰 진도율 게이지 */
+  .big-progress {
+    padding: 16px 20px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    margin-bottom: 16px;
+  }
+  .big-progress-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .big-progress-value { font-size: 22px; font-weight: 600; margin: 4px 0; }
+  .big-progress-bar { height: 6px; background: var(--line-soft); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+  .big-progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; }
+
+  /* 시장 크기 토글 */
+  .market-toggle-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s;
+    background: var(--line-soft);
+  }
+  .market-toggle-header:hover { background: #ebedf0; }
+  .market-toggle-title { font-size: 14px; font-weight: 600; }
+  .market-toggle-summary { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .market-toggle-caret { font-size: 12px; color: var(--muted); transition: transform 0.2s; }
+  .market-toggle-header.expanded .market-toggle-caret { transform: rotate(180deg); }
+  .market-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease, margin-top 0.4s ease;
+    margin-top: 0;
+  }
+  .market-content.expanded { max-height: 3000px; margin-top: 12px; }
+  .market-block {
+    padding: 18px 20px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    margin-bottom: 12px;
+  }
+  .market-block-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+  }
+  .market-data-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .market-data-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 13px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .market-data-item:last-child { border-bottom: none; }
+  .market-data-label { color: var(--muted); }
+  .market-data-value { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .tam-sam-som { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tam-tier { padding: 12px 14px; border: 1px solid var(--line); border-radius: 4px; }
+  .tam-tier.tam { border-color: var(--accent); background: var(--accent-soft); }
+  .tam-tier-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: var(--muted); }
+  .tam-tier.tam .tam-tier-label { color: var(--accent); }
+  .tam-tier-name { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .tam-tier-value { font-size: 18px; font-weight: 700; margin: 6px 0 4px; }
+  .tam-tier-note { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+  .penetration-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .penetration-table th, .penetration-table td {
+    padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--line-soft);
+    font-variant-numeric: tabular-nums;
+  }
+  .penetration-table th { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
+  .penetration-table td.left, .penetration-table th.left { text-align: left; }
+  .penetration-table tr.target { background: var(--accent-soft); font-weight: 600; }
+
+  .vs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .vs-card { padding: 12px 14px; border: 1px solid var(--line); border-radius: 4px; font-size: 12px; }
+  .vs-card.us { border-color: var(--accent); background: var(--accent-soft); }
+  .vs-card-name { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .vs-row { padding: 4px 0; display: flex; justify-content: space-between; border-bottom: 1px solid var(--line-soft); }
+  .vs-row:last-child { border-bottom: none; }
+
+  .insight-list, .risk-list { list-style: none; padding: 0; }
+  .insight-list li, .risk-list li {
+    font-size: 12px; padding: 4px 0; padding-left: 14px; position: relative; line-height: 1.5;
+  }
+  .insight-list li::before { content: "✓"; position: absolute; left: 0; color: var(--accent); font-weight: 600; }
+  .risk-list li::before { content: "⚠"; position: absolute; left: 0; color: var(--warn, #92400e); }
+
+  /* 셀러 도구 탭 */
+  .tools-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .tool-card {
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+  }
+  .tool-card.empty { border-style: dashed; opacity: 0.6; }
+  .tool-card.확정 { border-color: var(--accent); }
+  .tool-num { font-size: 10px; letter-spacing: 0.1em; color: var(--muted); font-weight: 600; }
+  .tool-name { font-size: 15px; font-weight: 600; margin: 4px 0 6px; }
+  .tool-status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 500;
+    background: var(--line-soft);
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .tool-status-badge.s-기획 { background: #f3f4f6; color: #6b7280; }
+  .tool-status-badge.s-후보확정 { background: #fef3c7; color: #92400e; }
+  .tool-status-badge.s-개발 { background: #dbeafe; color: #1e3a8a; }
+  .tool-status-badge.s-베타 { background: #ddd6fe; color: #5b21b6; }
+  .tool-status-badge.s-출시 { background: #c7d2fe; color: #1e3a8a; }
+  .tool-status-badge.s-판매중 { background: #d1fae5; color: #065f46; }
+  .tool-meta-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; border-bottom: 1px solid var(--line-soft); }
+  .tool-meta-row:last-child { border-bottom: none; }
+  .tool-meta-label { color: var(--muted); }
+  .tool-meta-value { font-weight: 500; }
+  .tool-note { font-size: 11px; color: var(--muted); margin-top: 8px; line-height: 1.4; }
+
+  /* 후보 풀 */
+  .candidate-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .candidate-item {
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font-size: 12px;
+  }
+  .candidate-item.priority-star { border-color: var(--accent); background: var(--accent-soft); }
+  .candidate-item.priority-option { border-color: #fde68a; background: #fef9c3; }
+  .candidate-item.priority-secondary { opacity: 0.6; }
+  .candidate-name { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+  .candidate-skill { font-family: ui-monospace, "SF Mono", monospace; font-size: 11px; color: var(--muted); }
+  .candidate-note { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .candidate-priority {
+    display: inline-block;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .candidate-priority.priority-star { background: var(--accent); color: white; }
+  .candidate-priority.priority-option { background: #92400e; color: white; }
+  .candidate-priority.priority-secondary { background: var(--line); color: var(--muted); }
+  .price-model-badge {
+    display: inline-block;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .price-model-badge.sub { background: var(--accent); color: white; }
+  .price-model-badge.one { background: #fde68a; color: #92400e; }
+  .price-model-badge.mix { background: var(--line); color: var(--muted); }
+
+  /* 채널 */
+  .channel-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .channel-card { padding: 14px 16px; border: 1px solid var(--line); border-radius: 4px; }
+  .channel-name { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+  .channel-role { font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 8px; }
+  .channel-note { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  /* 경쟁사 비교 */
+  .competitor-card {
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 20px 24px;
+  }
+  .competitor-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+  }
+  .competitor-table th, .competitor-table td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--line-soft);
+    font-size: 13px;
+  }
+  .competitor-table th {
+    font-weight: 600;
+    font-size: 12px;
+    background: var(--line-soft);
+    color: var(--fg);
+  }
+  .competitor-table th.us { color: var(--accent); }
+  .competitor-table td.us {
+    background: var(--accent-soft);
+    font-weight: 500;
+  }
+  .competitor-table td.label {
+    font-size: 11px;
+    color: var(--muted);
+    width: 130px;
+  }
+  .competitor-insights {
+    background: #fafafa;
+    border-radius: 4px;
+    padding: 14px 18px;
+  }
+  .competitor-insights-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .competitor-insights ul { list-style: none; padding: 0; }
+  .competitor-insights li {
+    font-size: 12px;
+    padding: 5px 0;
+    padding-left: 14px;
+    position: relative;
+    line-height: 1.5;
+  }
+  .competitor-insights li::before {
+    content: "·";
+    position: absolute;
+    left: 4px;
+  }
+  .competitor-insights li strong { color: var(--accent); }
+
+  /* Pro 기준 시나리오 */
+  .pro-scenario-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .pro-scenario {
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 16px;
+  }
+  .pro-scenario.recommended { border-color: var(--accent); background: var(--accent-soft); }
+  .pro-scenario-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .pro-scenario-note { font-size: 11px; color: var(--muted); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line-soft); }
+  .pro-scenario-row { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0; font-size: 12px; }
+  .pro-scenario-row.pro-row { font-weight: 600; }
+  .pro-scenario-revenue { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-soft); font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; }
+
+  /* 전환표 */
+  .conversion-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .conversion-table th, .conversion-table td {
+    padding: 10px 12px;
+    text-align: right;
+    font-size: 13px;
+    border-bottom: 1px solid var(--line-soft);
+    font-variant-numeric: tabular-nums;
+  }
+  .conversion-table th {
+    background: var(--line-soft);
+    font-weight: 500;
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: right;
+  }
+  .conversion-table td.left, .conversion-table th.left { text-align: left; }
+  .conversion-table tr:last-child td { border-bottom: none; }
+  .conversion-table tr.target { background: var(--accent-soft); }
+  .conversion-table tr.target td { font-weight: 600; }
+  .conversion-table tr.onething { background: #1e3a8a; color: white; }
+  .conversion-table tr.onething td { font-weight: 600; }
+  .conv-bar-wrap {
+    width: 100px;
+    height: 4px;
+    background: var(--line-soft);
+    border-radius: 2px;
+    overflow: hidden;
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 6px;
+  }
+  .conv-bar { height: 100%; background: var(--accent); }
+  .conversion-table tr.onething .conv-bar-wrap { background: rgba(255,255,255,0.2); }
+  .conversion-table tr.onething .conv-bar { background: white; }
+  .conv-label {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: white;
+    font-weight: 500;
+  }
+  .conversion-table tr.onething .conv-label { background: white; color: var(--accent); }
+
+  /* 가격 플랜 */
+  .pricing-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .pricing-card {
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .pricing-card.recommended {
+    border-color: var(--accent);
+    border-width: 2px;
+    padding: 15px;
+    background: var(--accent-soft);
+  }
+  .pricing-recommended-badge {
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent);
+    color: white;
+    font-size: 10px;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .pricing-name { font-size: 14px; font-weight: 600; margin-bottom: 8px; letter-spacing: -0.01em; }
+  .pricing-price-row { display: flex; align-items: baseline; gap: 4px; margin-bottom: 4px; }
+  .pricing-price { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .pricing-period { font-size: 11px; color: var(--muted); }
+  .pricing-target { font-size: 11px; color: var(--muted); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line-soft); }
+  .pricing-features { list-style: none; padding: 0; flex: 1; }
+  .pricing-features li {
+    font-size: 12px;
+    padding: 4px 0;
+    padding-left: 16px;
+    position: relative;
+    color: var(--fg);
+    line-height: 1.4;
+  }
+  .pricing-features li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* 유튜브 로드맵 */
+  .yt-channel-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  .yt-channel {
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  .yt-channel.primary { border-color: var(--accent); background: var(--accent-soft); }
+  .yt-channel-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; }
+  .yt-channel.primary .yt-channel-label { color: var(--accent); }
+  .yt-channel-name { font-size: 16px; font-weight: 600; margin: 4px 0 6px; }
+  .yt-channel-target { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .yt-channel-tone { font-size: 11px; color: var(--muted); padding-top: 8px; border-top: 1px solid var(--line); margin-top: 8px; }
+
+  /* GO 신호 */
+  .go-signals-card { padding: 16px 18px; border: 1px solid var(--line); border-radius: 4px; margin-bottom: 24px; }
+  .go-signals-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; margin-bottom: 12px; }
+  .go-signal-item { display: grid; grid-template-columns: 18px 1fr 100px; align-items: center; padding: 6px 0; font-size: 13px; gap: 10px; }
+  .go-signal-status { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--line); }
+  .go-signal-status.ok { background: var(--accent); border-color: var(--accent); position: relative; }
+  .go-signal-status.ok::after { content: "✓"; color: white; font-size: 10px; position: absolute; top: -2px; left: 2px; }
+  .go-signal-date { font-size: 11px; color: var(--muted); text-align: right; }
+
+  /* YT phase cards */
+  .yt-phases { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 24px; }
+  .yt-phase {
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+    transition: border-color 0.15s;
+  }
+  .yt-phase:hover { border-color: var(--muted); }
+  .yt-phase.current { border-color: var(--accent); background: var(--accent-soft); }
+  .yt-phase.selected { border-width: 2px; padding: 13px; box-shadow: 0 0 0 3px rgba(30,58,138,0.08); border-color: var(--fg); }
+  .yt-phase-num { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; font-weight: 600; }
+  .yt-phase.current .yt-phase-num { color: var(--accent); }
+  .yt-phase-name { font-size: 14px; font-weight: 600; margin: 4px 0 2px; }
+  .yt-phase-period { font-size: 11px; color: var(--muted); }
+  .yt-phase-range { font-size: 12px; font-weight: 500; padding: 4px 8px; background: var(--bg); border: 1px solid var(--line); border-radius: 3px; display: inline-block; margin-top: 8px; }
+  .yt-phase-marker { position: absolute; top: -8px; right: 12px; background: var(--accent); color: white; font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+
+  /* YT phase missions */
+  .yt-mission-block { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .yt-mission-channel { border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; }
+  .yt-mission-channel.empty { opacity: 0.5; }
+  .yt-mission-channel-name { font-size: 12px; font-weight: 600; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line-soft); }
+  .yt-mission-list { font-size: 12px; color: var(--muted); list-style: none; padding: 0; }
+  .yt-mission-list li { padding: 4px 0; padding-left: 12px; position: relative; line-height: 1.4; }
+  .yt-mission-list li::before { content: "·"; position: absolute; left: 2px; }
+  .yt-mission-empty { font-size: 12px; color: #d1d5db; font-style: italic; }
+
+  /* Data Sources */
+  .src-group { margin-bottom: 28px; }
+  .src-group h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  .src-item { display: grid; grid-template-columns: minmax(280px, 1fr) 2fr; gap: 16px; padding: 7px 0; border-bottom: 1px solid var(--line-soft); font-size: 12px; }
+  .src-item:last-child { border-bottom: none; }
+  .src-path { font-family: ui-monospace, "SF Mono", monospace; font-size: 11px; word-break: break-all; }
+  .src-role { color: var(--muted); }
+
+  .footer-note { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title">1000억보드</div>
+    <div class="subtitle">신현빈 · 마감 2036.03.04 · D-<span id="dday">-</span></div>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-panel="main">메인</div>
+    <div class="tab" data-panel="weekly">주간/월간</div>
+    <div class="tab" data-panel="mandalart">만다라트</div>
+    <div class="tab" data-panel="commerce">커머스</div>
+    <div class="tab" data-panel="youtube">유튜브</div>
+    <div class="tab" data-panel="saas">상페마법사</div>
+    <div class="tab" data-panel="tools">셀러 도구</div>
+    <div class="tab" data-panel="roadmap">로드맵</div>
+    <div class="tab" data-panel="data">데이터</div>
+  </div>
+
+  <!-- MAIN: 빠른 status -->
+  <div class="panel active" id="panel-main">
+
+    <!-- 원씽 -->
+    <div class="onething-card" id="onething-card"></div>
+
+    <!-- 필수 미션 -->
+    <div class="musthave-card" id="musthave-card"></div>
+
+    <!-- 다음 영입 -->
+    <div class="hiring-card" id="hiring-card"></div>
+
+    <!-- 작전 개요 -->
+    <div class="strategy-card" id="strategy-card"></div>
+
+    <div class="kpi-row" id="kpi-row"></div>
+
+    <div class="section">
+      <div id="now-card-container"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">현재 위치 — Phase 1</div>
+      <div class="section-desc">기반 강화 (2026~2027) · 5~10억 자산 목표</div>
+      <div id="current-phase"></div>
+    </div>
+
+    <div class="section">
+      <div class="week-row">
+        <div>
+          <div class="section-title">이번주 목표 (W18)</div>
+          <div class="section-desc">2026-04-27 ~ 05-03</div>
+        </div>
+        <div class="week-progress-text" id="week-progress-text"></div>
+      </div>
+      <div class="checklist" id="weekly-mini"></div>
+    </div>
+  </div>
+
+  <!-- WEEKLY/MONTHLY -->
+  <div class="panel" id="panel-weekly">
+    <div class="section">
+      <div class="week-row">
+        <div>
+          <div class="section-title">이번주 목표</div>
+          <div class="section-desc" id="week-label">-</div>
+        </div>
+        <div class="week-progress-text" id="week-progress-text-2"></div>
+      </div>
+      <div class="checklist" id="weekly-full"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">이번달 — <span id="month-label">-</span></div>
+      <div class="section-desc" id="month-note">-</div>
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="kpi-label">월 목표</div>
+          <div class="kpi-value" id="month-target">-</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">월 실적</div>
+          <div class="kpi-value" id="month-actual">-</div>
+        </div>
+        <div class="kpi" style="grid-column: span 2;">
+          <div class="kpi-label">핵심 마일스톤</div>
+          <div id="month-milestones" style="font-size: 13px; margin-top: 6px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANDALART -->
+  <div class="panel" id="panel-mandalart">
+    <div class="section">
+      <div class="section-title">2026 만다라트 — 10억 분배</div>
+      <div class="section-desc">중앙 = 올해 목표 · 5 수익원(블루) + 3 운영(회색) · 빈 칸은 사용하면서 state.js에서 채움</div>
+      <div class="m-summary-wrap">
+        <div class="m-summary" id="m-summary"></div>
+        <div class="m-chart-wrap" id="m-chart-wrap">
+          <div class="m-chart-inner">
+            <div class="m-chart-svg" id="m-chart-svg"></div>
+            <div class="m-chart-legend" id="m-chart-legend"></div>
+          </div>
+        </div>
+      </div>
+      <div class="mandalart-wrap"><div class="mandalart" id="mandalart"></div></div>
+    </div>
+  </div>
+
+  <!-- COMMERCE TRACKER -->
+  <div class="panel" id="panel-commerce">
+
+    <div class="section">
+      <div class="section-title">전체 KPI</div>
+      <div class="commerce-kpi-row" id="commerce-kpi"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">아이템별 기대 월 순익</div>
+      <div class="section-desc">현재 등록된 SKU 기준 · state.js에서 SKU 추가/수정 시 자동 갱신</div>
+      <div class="m-chart-inner" style="margin-top:8px;">
+        <div class="m-chart-svg" id="commerce-chart-svg"></div>
+        <div class="m-chart-legend" id="commerce-chart-legend"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">SKU 트래커 (<span id="sku-count">-</span>)</div>
+      <div class="section-desc">단계: 시장조사 → 샘플발주 → 샘플검증 → 본품발주 → 입고 → 등록 → 광고 → 안정 · 카드 클릭 시 사이클 보기</div>
+      <div class="sku-grid" id="sku-grid"></div>
+    </div>
+
+    <div class="section" id="sku-detail-section">
+      <div class="section-title">선택된 SKU — <span id="detail-sku-name">-</span></div>
+      <div id="sku-detail"></div>
+    </div>
+
+  </div>
+
+  <!-- YOUTUBE -->
+  <div class="panel" id="panel-youtube">
+
+    <div class="section">
+      <div class="section-title">채널 전략</div>
+      <div class="section-desc">소문의섬 집중 → 4 신호 GO 시 역전야매치트키 확장</div>
+      <div class="yt-channel-row" id="yt-channel-row"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">확장 GO 신호 (4개 다 ✅ 시 역전야매 셋업)</div>
+      <div class="go-signals-card" id="go-signals-card"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">페이즈 (구독자 0 → 10만)</div>
+      <div class="section-desc">카드 클릭 시 페이즈 미션 보기</div>
+      <div class="yt-phases" id="yt-phases"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">선택된 페이즈 — <span id="yt-detail-name">-</span></div>
+      <div id="yt-detail"></div>
+    </div>
+
+  </div>
+
+  <!-- SAAS (상페마법사) -->
+  <div class="panel" id="panel-saas">
+
+    <div class="commerce-kpi-row" id="saas-kpi"></div>
+
+    <div class="section">
+      <div class="section-title">가격 플랜 (4가지)</div>
+      <div class="section-desc">Pro = 메인 플랜 / 12월 풀가동 시 180계정 = 월 3천만</div>
+      <div class="pricing-grid" id="pricing-grid"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">페이즈 (계정 0 → 180)</div>
+      <div class="section-desc">카드 클릭 시 페이즈 미션 보기</div>
+      <div class="yt-phases" id="saas-phases"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">선택된 페이즈 — <span id="saas-detail-name">-</span></div>
+      <div id="saas-detail"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">국내 시장 크기 분석</div>
+      <div class="market-toggle-header" id="market-toggle-header">
+        <div>
+          <div class="market-toggle-title" id="market-toggle-title">-</div>
+          <div class="market-toggle-summary" id="market-toggle-summary">-</div>
+        </div>
+        <div class="market-toggle-caret">▾</div>
+      </div>
+      <div class="market-content" id="market-content"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">경쟁사 비교 — <span id="competitor-name">-</span></div>
+      <div class="section-desc" id="competitor-scale">-</div>
+      <div class="competitor-card" id="competitor-card"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Pro 300명 기준 비율 시뮬</div>
+      <div class="section-desc">유료 가입자 분포 시나리오 — Pro Max 10% 고정 / Lite·Pro 비중 조정</div>
+      <div class="pro-scenario-grid" id="pro-scenario-grid"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">유튜브 구독자 → SaaS 가입자 추정</div>
+      <div class="section-desc">전환율 0.8% / 유지율 75% / Pro 평균 14만 가정 · <strong>5만 구독자 = 풀가동 손익분기</strong></div>
+      <div id="conversion-table"></div>
+    </div>
+
+  </div>
+
+  <!-- 셀러 도구 (마케팅 지원 프로그램 3종) -->
+  <div class="panel" id="panel-tools">
+
+    <div class="section">
+      <div class="section-title" id="tools-title">-</div>
+      <div class="section-desc" id="tools-summary">-</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">3종 프로그램</div>
+      <div class="tools-grid" id="tools-programs"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">페이즈</div>
+      <div class="section-desc">카드 클릭 시 페이즈 미션 보기</div>
+      <div class="yt-phases" id="tools-phases"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">선택된 페이즈 — <span id="tools-detail-name">-</span></div>
+      <div id="tools-detail"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">후보 풀 (기존 스킬 패키징 가능)</div>
+      <div class="section-desc">3개 도구 후보로 활용 가능한 기존 스킬 목록 — 시장 조사 후 3개 선택</div>
+      <div class="candidate-list" id="tools-candidates"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">채널 — 판매 + 홍보</div>
+      <div class="channel-row" id="tools-channels"></div>
+    </div>
+
+  </div>
+
+  <!-- ROADMAP — 뷰 토글 (월간/연간/10년) -->
+  <div class="panel" id="panel-roadmap">
+
+    <div class="view-toggle" id="view-toggle">
+      <button data-view="month">월간</button>
+      <button data-view="year" class="active">연간 2026</button>
+      <button data-view="decade">10년</button>
+    </div>
+
+    <!-- 월간 뷰 -->
+    <div class="view-content" data-view="month">
+      <div class="section">
+        <div class="section-title">이번달 (<span id="rm-month">-</span>)</div>
+        <div id="rm-month-card"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">이번주 (<span id="rm-week">-</span>)</div>
+        <div id="rm-week-card"></div>
+      </div>
+    </div>
+
+    <!-- 연간 뷰 -->
+    <div class="view-content active" data-view="year">
+      <div class="section">
+        <div class="section-title">2026 — 연간 10억</div>
+        <div class="section-desc">분기 → 월 흐름 / Q1 지남 / Q2 준비 / Q3 수확 / Q4 피크</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title" style="font-size:13px; color:var(--muted);">▸ 분기</div>
+        <div class="quarter-row" id="quarters"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title" style="font-size:13px; color:var(--muted);">▸ 월별 램프업</div>
+        <div class="ramp" id="ramp"></div>
+        <div class="ramp-labels" id="ramp-labels"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">수익원 분배 (매출 → 마진율 → 순익)</div>
+        <table>
+          <tbody id="revenue-mix"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 10년 뷰 -->
+    <div class="view-content" data-view="decade">
+      <div class="section">
+        <div class="section-title">10년 Phase — 1000억까지</div>
+        <div class="section-desc">2026~2036 · 분기 점검 또는 큰 그림 환기 시 참고</div>
+        <div class="phases" id="phases"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">포트폴리오 변화</div>
+        <div class="section-desc">대행 의존 → SaaS/투자/IP 다각화</div>
+        <div id="legend" style="margin-bottom: 12px;"></div>
+        <div id="portfolio"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">핵심 원칙</div>
+        <div class="section-desc">rich-agent 의사결정 가이드</div>
+        <div class="principles" id="principles"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- DATA -->
+  <div class="panel" id="panel-data">
+    <div class="section">
+      <div class="section-title">rich-agent가 참조하는 데이터</div>
+      <div class="section-desc">대시보드는 state.js만 읽음 / 그 외는 rich-agent가 컨텍스트로 활용</div>
+    </div>
+    <div class="src-group">
+      <h3>📁 파일</h3>
+      <div id="src-files"></div>
+    </div>
+    <div class="src-group">
+      <h3>📝 Apple 미리알림</h3>
+      <div id="src-reminders"></div>
+    </div>
+    <div class="src-group">
+      <h3>🗒 Notion DB</h3>
+      <div id="src-notion"></div>
+    </div>
+    <div class="footer-note">
+      마지막 갱신: <span id="last-updated">-</span> · state.js 수정 후 새로고침
+    </div>
+  </div>
+
+  <div class="footer-note">rich-agent · 젠 스타일</div>
+</div>
+
+<script src="state.js"></script>
+<script>
+  const fmt = (n) => {
+    if (n >= 100000000) return (n / 100000000).toLocaleString("ko-KR", { maximumFractionDigits: 1 }) + "억";
+    if (n >= 10000) return (n / 10000).toLocaleString("ko-KR") + "만";
+    return n.toLocaleString("ko-KR");
+  };
+  // 백만원 단위 → 한국식 (600 → 6억, 50 → 5천만, 5 → 500만)
+  const fmtKR = (m) => {
+    if (m >= 100) {
+      const eok = m / 100;
+      return (eok === Math.floor(eok) ? eok : eok.toFixed(1)) + "억";
+    }
+    if (m >= 10) return (m / 10) + "천만";
+    return m * 100 + "만";
+  };
+
+  // D-day
+  const today = new Date();
+  const target = new Date(STATE.meta.targetDate);
+  const dday = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+  document.getElementById("dday").textContent = dday.toLocaleString();
+
+  const totalDays = Math.ceil((target - new Date(STATE.meta.startDate)) / (1000 * 60 * 60 * 24));
+  const elapsed = totalDays - dday;
+  const elapsedPct = Math.max(0, (elapsed / totalDays) * 100);
+
+  // 원씽 렌더
+  const ot = STATE.oneThing;
+  const otTarget = new Date(ot.deadline);
+  const otDday = Math.ceil((otTarget - today) / (1000 * 60 * 60 * 24));
+  const otPct = ot.current && ot.target ? (ot.current / ot.target) * 100 : 0;
+  document.getElementById("onething-card").innerHTML = `
+    <div class="onething-label">🎯 ONE THING · 2026</div>
+    <div class="onething-goal">${ot.goal}</div>
+    <div class="onething-why">${ot.why}</div>
+    <div class="onething-progress-row">
+      <div><span class="onething-current">${ot.current.toLocaleString()}</span> / ${ot.target.toLocaleString()} (${otPct.toFixed(1)}%)</div>
+      <div class="onething-deadline">${ot.deadline} · D-${otDday}</div>
+    </div>
+    <div class="onething-bar"><div class="onething-fill" style="width:${Math.min(100, otPct)}%"></div></div>
+  `;
+
+  // 필수 미션 렌더
+  document.getElementById("musthave-card").innerHTML = `
+    <div class="musthave-label">MUST HAVE · 올해 필수 3</div>
+    <div class="musthave-grid">
+      ${STATE.mustHave.map(m => `
+        <div class="musthave-item">
+          <div class="musthave-icon">${m.icon}</div>
+          <div class="musthave-title">${m.title}</div>
+          <div class="musthave-detail">${m.detail}</div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+
+  // 다음 영입 렌더
+  document.getElementById("hiring-card").innerHTML = `
+    <div class="hiring-label">👥 다음 영입</div>
+    <div class="hiring-list">
+      ${STATE.hiring.map(h => `
+        <div class="hiring-item">
+          <span class="hiring-num">#${h.priority}</span>
+          <span class="hiring-role">${h.role}</span>
+          <span class="hiring-trigger">— ${h.trigger}</span>
+        </div>
+      `).join("")}
+    </div>
+  `;
+
+  // 작전 개요 렌더 (연간 + 월간 토글)
+  const renderStrategyBlock = (s, kind) => `
+    <div class="strategy-header">
+      <div class="strategy-title">🎯 ${s.title}</div>
+      <div class="strategy-summary">${s.summary}</div>
+    </div>
+    <div class="strategy-pillars">
+      ${s.pillars.map(p => `
+        <div class="pillar">
+          <div class="pillar-icon">${p.icon}</div>
+          <div class="pillar-title">${p.title}</div>
+          <div class="pillar-detail">${p.detail}</div>
+        </div>
+      `).join("")}
+    </div>
+    ${kind === "annual" ? `
+      <div class="strategy-principles">
+        <div class="strategy-principles-label">핵심 원칙</div>
+        <ul>${s.principles.map(p => `<li>${p}</li>`).join("")}</ul>
+      </div>
+    ` : `
+      <div class="key-missions">
+        <div class="key-missions-label">${s.month} 핵심 미션</div>
+        <ul>${s.keyMissions.map(m => `<li>${m}</li>`).join("")}</ul>
+      </div>
+    `}
+  `;
+
+  document.getElementById("strategy-card").innerHTML = `
+    <div class="strategy-toggle" id="strategy-toggle-btns">
+      <button data-strat="monthly" class="active">월간 (${STATE.strategy.monthly.month})</button>
+      <button data-strat="annual">연간 2026</button>
+    </div>
+    <div class="strategy-content active" data-strat="monthly">${renderStrategyBlock(STATE.strategy.monthly, "monthly")}</div>
+    <div class="strategy-content" data-strat="annual">${renderStrategyBlock(STATE.strategy.annual, "annual")}</div>
+  `;
+
+  document.querySelectorAll("#strategy-toggle-btns button").forEach(b => {
+    b.addEventListener("click", () => {
+      const k = b.dataset.strat;
+      document.querySelectorAll("#strategy-toggle-btns button").forEach(x => x.classList.remove("active"));
+      document.querySelectorAll(".strategy-content").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      document.querySelector(`.strategy-content[data-strat="${k}"]`).classList.add("active");
+    });
+  });
+
+  // KPI
+  const minProfit6m = STATE.year2026.revenueMix.reduce((s,r) => s + (r.profit6m || 0), 0);
+  const kpis = [
+    { label: "최종 목표", value: fmt(STATE.meta.target), sub: STATE.meta.targetDate, fill: 0 },
+    { label: "현재 자본", value: fmt(STATE.meta.capital), sub: STATE.meta.capitalNote, fill: 0 },
+    { label: "2026 하반기 순익 (최소)", value: fmtKR(minProfit6m), sub: "12월 풀가동 월 1.4억 + Q4 강의 5천", fill: 0 },
+    { label: "10년 시간 진행", value: elapsedPct.toFixed(1) + "%", sub: `${elapsed}일 / ${totalDays}일`, fill: elapsedPct }
+  ];
+  document.getElementById("kpi-row").innerHTML = kpis.map(k => `
+    <div class="kpi">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-sub">${k.sub}</div>
+      ${k.fill > 0 ? `<div class="kpi-bar"><div class="kpi-bar-fill" style="width:${Math.min(100, k.fill)}%"></div></div>` : ""}
+    </div>
+  `).join("");
+
+  // Now Card (다음 마일스톤)
+  const nm = STATE.nextMilestone;
+  const milestoneTarget = new Date(nm.targetDate);
+  const milestoneDday = Math.ceil((milestoneTarget - today) / (1000 * 60 * 60 * 24));
+  document.getElementById("now-card-container").innerHTML = `
+    <div class="now-card">
+      <div class="now-label">다음 마일스톤 · D-${milestoneDday}</div>
+      <div class="now-title">${nm.title}</div>
+      <div class="now-meta">목표일: ${nm.targetDate}${nm.blocker ? ` · ⚠️ ${nm.blocker}` : ""}</div>
+    </div>
+  `;
+
+  // Current Phase
+  const cp = STATE.phases.find(p => p.currentPhase);
+  document.getElementById("current-phase").innerHTML = `
+    <div class="phase current">
+      <div class="phase-marker">현재</div>
+      <div class="phase-num">PHASE ${cp.id}</div>
+      <div class="phase-name">${cp.name}</div>
+      <div class="phase-period">${cp.period} · ${cp.years}년</div>
+      <div class="phase-target">${fmt(cp.targetRange[0])} ~ ${fmt(cp.targetRange[1])}</div>
+      <ul class="phase-actions">${cp.actions.map(a => `<li>${a}</li>`).join("")}</ul>
+    </div>
+  `;
+
+  // Weekly Mini (메인 탭)
+  const w = STATE.weekly;
+  const doneCount = w.goals.filter(g => g.done).length;
+  const weekProgressHTML = w.goals.map(g => `
+    <div class="check-item ${g.done ? "done" : ""}">
+      <div class="check-box"></div>
+      <div class="check-prio">${g.priority}</div>
+      <div class="check-task">${g.task}</div>
+      <div class="check-project">${g.project}</div>
+    </div>
+  `).join("");
+  const progText = `${doneCount} / ${w.goals.length} · ${Math.round(doneCount/w.goals.length*100)}%`;
+  document.getElementById("weekly-mini").innerHTML = weekProgressHTML;
+  document.getElementById("weekly-full").innerHTML = weekProgressHTML;
+  document.getElementById("week-progress-text").textContent = progText;
+  document.getElementById("week-progress-text-2").textContent = progText;
+  document.getElementById("week-label").textContent = w.label;
+
+  // Monthly
+  const m = STATE.monthly;
+  document.getElementById("month-label").textContent = m.month;
+  document.getElementById("month-note").textContent = m.note;
+  document.getElementById("month-target").textContent = fmt(m.target);
+  document.getElementById("month-actual").textContent = m.actual === null ? "미정" : fmt(m.actual);
+  document.getElementById("month-milestones").innerHTML = m.keyMilestones.map(km => `<div style="margin: 2px 0;">· ${km}</div>`).join("");
+
+  // Mandalart 9x9 (정사각형)
+  const mand = STATE.mandalart;
+  const grid = [];
+  for (let r = 0; r < 9; r++) {
+    grid[r] = [];
+    for (let c = 0; c < 9; c++) grid[r][c] = { type: "", text: "", color: null };
+  }
+  const blockMap = [[0,1,2],[3,-1,4],[5,6,7]];
+
+  const catTitleHTML = (cat) => {
+    const amount = cat.amount ? `<span class="cat-amount">${fmtKR(cat.amount)}</span>` : "";
+    return `${cat.title}${amount}`;
+  };
+
+  // 중앙 셀
+  grid[4][4] = { type: "center", text: `${mand.center.title}<span class="center-sub">${mand.center.subtitle}</span>`, color: null };
+
+  for (let br = 0; br < 3; br++) {
+    for (let bc = 0; bc < 3; bc++) {
+      const catIdx = blockMap[br][bc];
+      const startR = br * 3, startC = bc * 3;
+      if (catIdx === -1) {
+        const positions = [
+          [startR+0,startC+0,0],[startR+0,startC+1,1],[startR+0,startC+2,2],
+          [startR+1,startC+0,3],                       [startR+1,startC+2,4],
+          [startR+2,startC+0,5],[startR+2,startC+1,6],[startR+2,startC+2,7]
+        ];
+        positions.forEach(([r,c,ci]) => {
+          const cat = mand.categories[ci];
+          grid[r][c] = { type: "cat-title", text: catTitleHTML(cat), color: cat.color };
+        });
+      } else {
+        const cat = mand.categories[catIdx];
+        grid[startR+1][startC+1] = { type: "cat-title", text: catTitleHTML(cat), color: cat.color };
+        const positions = [
+          [startR+0,startC+0],[startR+0,startC+1],[startR+0,startC+2],
+          [startR+1,startC+0],                    [startR+1,startC+2],
+          [startR+2,startC+0],[startR+2,startC+1],[startR+2,startC+2]
+        ];
+        positions.forEach(([r,c], i) => {
+          const action = cat.actions[i] || "";
+          if (action) grid[r][c] = { type: "action", text: action, color: null };
+          else grid[r][c] = { type: "empty", text: "+", color: null };
+        });
+      }
+    }
+  }
+
+  let mhtml = "";
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      const cell = grid[r][c];
+      const style = cell.color ? `background:${cell.color};` : "";
+      // 9개 블록 분리: col 2,5 = 우측 두꺼운 라인 / row 2,5 = 아래 두꺼운 라인
+      const blockClasses = [];
+      if (c === 2 || c === 5) blockClasses.push("block-right-end");
+      if (r === 2 || r === 5) blockClasses.push("block-bottom-end");
+      if (c === 8) blockClasses.push("last-col");
+      if (r === 8) blockClasses.push("last-row");
+      mhtml += `<div class="m-cell ${cell.type} ${blockClasses.join(" ")}" style="${style}">${cell.text}</div>`;
+    }
+  }
+  document.getElementById("mandalart").innerHTML = mhtml;
+
+  // 만다라트 요약 헤더 (수익원만 + 합계 + 토글 캐럿)
+  const revCats = mand.categories.filter(c => c.kind === "rev");
+  const total = revCats.reduce((sum, c) => sum + (c.amount || 0), 0);
+  let summaryHTML = revCats.map(c => `
+    <div class="m-summary-item">
+      <span class="m-summary-dot" style="background:${c.color}"></span>
+      <span class="m-summary-name">${c.title}</span>
+      <span class="m-summary-amount">${fmtKR(c.amount)}</span>
+    </div>
+  `).join("");
+  summaryHTML += `<div class="m-summary-total">합계 ${fmtKR(total)}</div><span class="m-summary-caret">▾</span>`;
+  document.getElementById("m-summary").innerHTML = summaryHTML;
+
+  // 도넛 차트 SVG
+  function donutChart(items, size = 220) {
+    const totalVal = items.reduce((s, i) => s + i.value, 0);
+    const cx = size / 2, cy = size / 2;
+    const r = size * 0.42, ir = size * 0.26;
+    let startAngle = -Math.PI / 2;
+    const paths = items.map(item => {
+      const angle = (item.value / totalVal) * 2 * Math.PI;
+      const endAngle = startAngle + angle;
+      const x1 = cx + r * Math.cos(startAngle), y1 = cy + r * Math.sin(startAngle);
+      const x2 = cx + r * Math.cos(endAngle),   y2 = cy + r * Math.sin(endAngle);
+      const x3 = cx + ir * Math.cos(endAngle),  y3 = cy + ir * Math.sin(endAngle);
+      const x4 = cx + ir * Math.cos(startAngle), y4 = cy + ir * Math.sin(startAngle);
+      const largeArc = angle > Math.PI ? 1 : 0;
+      const path = `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${ir} ${ir} 0 ${largeArc} 0 ${x4} ${y4} Z`;
+      const labelAngle = startAngle + angle / 2;
+      const labelR = (r + ir) / 2;
+      const lx = cx + labelR * Math.cos(labelAngle);
+      const ly = cy + labelR * Math.sin(labelAngle);
+      const pct = (item.value / totalVal * 100);
+      startAngle = endAngle;
+      return { path, color: item.color, lx, ly, pct };
+    });
+    const slices = paths.map(p => `<path d="${p.path}" fill="${p.color}"/>`).join("");
+    const labels = paths.map(p => p.pct >= 7
+      ? `<text x="${p.lx}" y="${p.ly}" fill="white" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="600">${p.pct.toFixed(0)}%</text>`
+      : ""
+    ).join("");
+    const center = `<text x="${cx}" y="${cy - 6}" text-anchor="middle" font-size="11" fill="#6b7280">2026 목표</text>
+                    <text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="18" font-weight="700">${fmtKR(totalVal)}</text>`;
+    return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">${slices}${labels}${center}</svg>`;
+  }
+
+  const chartItems = revCats.map(c => ({ label: c.title, value: c.amount, color: c.color }));
+  document.getElementById("m-chart-svg").innerHTML = donutChart(chartItems);
+  document.getElementById("m-chart-legend").innerHTML = chartItems.map(i => `
+    <div class="m-chart-legend-item">
+      <span class="m-chart-legend-dot" style="background:${i.color}"></span>
+      <span class="m-chart-legend-name">${i.label}</span>
+      <span class="m-chart-legend-pct">${fmtKR(i.value)} (${(i.value/total*100).toFixed(0)}%)</span>
+    </div>
+  `).join("");
+
+  // 만다라트 요약 클릭 → 차트 토글
+  document.getElementById("m-summary").addEventListener("click", () => {
+    document.getElementById("m-summary").classList.toggle("expanded");
+    document.getElementById("m-chart-wrap").classList.toggle("expanded");
+  });
+
+  // ─── COMMERCE TRACKER ───────────────────────
+  const ct = STATE.commerceTracker;
+  // 20 SKU 목표는 신규소싱만 카운트
+  const newSkus = ct.skus.filter(s => s.name && s.category !== "기존");
+  const existingSkus = ct.skus.filter(s => s.name && s.category === "기존");
+  const launched = newSkus.length;
+  const stable = newSkus.filter(s => s.stage === "안정").length;
+  const skuTarget = ct.totalTarget;
+
+  // KPI 4개
+  const cycleTarget = new Date(ct.currentCycle.targetLaunchDate);
+  const cycleDday = Math.ceil((cycleTarget - today) / (1000 * 60 * 60 * 24));
+  document.getElementById("commerce-kpi").innerHTML = `
+    <div class="big-progress">
+      <div class="big-progress-label">SKU 런칭 진도</div>
+      <div class="big-progress-value">${launched} / ${skuTarget}</div>
+      <div class="big-progress-bar"><div class="big-progress-fill" style="width:${launched/skuTarget*100}%"></div></div>
+    </div>
+    <div class="big-progress">
+      <div class="big-progress-label">안정 SKU (월 200만+)</div>
+      <div class="big-progress-value">${stable} / ${skuTarget}</div>
+      <div class="big-progress-bar"><div class="big-progress-fill" style="width:${stable/skuTarget*100}%"></div></div>
+    </div>
+    <div class="big-progress">
+      <div class="big-progress-label">이번달 신규 런칭</div>
+      <div class="big-progress-value">${ct.monthlyKPI.actualSkuLaunch} / ${ct.monthlyKPI.targetSkuLaunch}</div>
+      <div style="font-size:11px; color:var(--muted); margin-top:4px;">${ct.monthlyKPI.note}</div>
+    </div>
+    <div class="big-progress">
+      <div class="big-progress-label">광고 ROAS</div>
+      <div class="big-progress-value">${ct.monthlyKPI.actualROAS === null ? "—" : ct.monthlyKPI.actualROAS + "x"}</div>
+      <div style="font-size:11px; color:var(--muted); margin-top:4px;">목표 ${ct.monthlyKPI.targetROAS}x+</div>
+    </div>
+  `;
+
+  // SKU 트래커 그리드
+  const stages = ct.stageOrder;
+  const stageIdx = (s) => stages.indexOf(s);
+
+  document.getElementById("sku-count").textContent = `신규 ${launched} / ${skuTarget}${existingSkus.length ? ` · 기존 ${existingSkus.length}` : ""}`;
+
+  const renderSkuCard = (sku, origIdx) => {
+    const idx = stageIdx(sku.stage);
+    const segs = stages.map((_, si) => `<div class="seg ${si <= idx ? "filled" : ""}"></div>`).join("");
+    const rev = sku.monthlyRevenue ? ` · ${fmtKR(sku.monthlyRevenue/1000000)}/월` : "";
+    const isExist = sku.category === "기존";
+    return `
+      <div class="sku-card ${isExist ? "existing" : ""}" data-sku-idx="${origIdx}">
+        <div class="sku-name">${sku.name}${isExist ? '<span class="existing-badge">기존</span>' : ""}</div>
+        <span class="stage-badge s-${sku.stage}">${sku.stage}</span>${rev}
+        <div class="sku-stage-gauge">${segs}</div>
+        ${sku.note ? `<div class="sku-note">${sku.note}</div>` : ""}
+      </div>
+    `;
+  };
+
+  let skuHTML = `<div class="sku-section-label">신규 소싱 (${launched} / ${skuTarget})</div><div class="sku-grid">`;
+  // 신규소싱: 채워진 것 + 빈 슬롯 합쳐서 20개 채움
+  let newRendered = 0;
+  ct.skus.forEach((sku, i) => {
+    if (sku.name && sku.category !== "기존") {
+      skuHTML += renderSkuCard(sku, i);
+      newRendered++;
+    }
+  });
+  for (let j = newRendered; j < skuTarget; j++) {
+    skuHTML += `<div class="sku-card empty">+ SKU ${j + 1}</div>`;
+  }
+  skuHTML += `</div>`;
+
+  // 기존 SKU
+  if (existingSkus.length > 0) {
+    skuHTML += `<div class="sku-section-label">기존 운영 SKU (${existingSkus.length})</div><div class="sku-grid">`;
+    ct.skus.forEach((sku, i) => {
+      if (sku.name && sku.category === "기존") skuHTML += renderSkuCard(sku, i);
+    });
+    skuHTML += `</div>`;
+  }
+
+  document.getElementById("sku-grid").outerHTML = `<div id="sku-grid">${skuHTML}</div>`;
+
+  // SKU 디테일 렌더
+  function renderSkuDetail(skuIdx) {
+    const sku = ct.skus[skuIdx];
+    if (!sku || !sku.name) return;
+    document.getElementById("detail-sku-name").textContent = sku.name + (sku.note ? ` · ${sku.note}` : "");
+    const currentIdx = stageIdx(sku.stage);
+    const detailHTML = `
+      <div class="sku-detail-card">
+        ${stages.map((stage, si) => {
+          const status = si < currentIdx ? "past" : si === currentIdx ? "current" : "future";
+          const actions = ct.stageActions[stage] || [];
+          return `
+            <div class="stage-row ${status}">
+              <div class="stage-num">${si + 1}</div>
+              <div class="stage-content">
+                <div class="stage-name">${stage}${si === currentIdx ? " ← 현재" : ""}</div>
+                <ul class="stage-actions">
+                  ${actions.map(a => `<li>${a}</li>`).join("")}
+                </ul>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+    document.getElementById("sku-detail").innerHTML = detailHTML;
+
+    // 카드 selected 토글
+    document.querySelectorAll(".sku-card[data-sku-idx]").forEach(c => c.classList.remove("selected"));
+    document.querySelector(`.sku-card[data-sku-idx="${skuIdx}"]`).classList.add("selected");
+  }
+
+  // SKU 카드 클릭 이벤트
+  document.querySelectorAll(".sku-card[data-sku-idx]").forEach(c => {
+    c.addEventListener("click", () => renderSkuDetail(parseInt(c.dataset.skuIdx)));
+  });
+
+  // 기본 선택: 가장 진행 중인 SKU (입고 또는 본품발주)
+  const defaultIdx = ct.skus.findIndex(s => s.name && (s.stage === "입고" || s.stage === "본품발주"));
+  renderSkuDetail(defaultIdx >= 0 ? defaultIdx : 0);
+
+  // 아이템별 기대 수익 도넛
+  const skuColors = ["#1e3a8a", "#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd", "#0e7490", "#0891b2", "#06b6d4", "#22d3ee", "#65a30d", "#84cc16", "#a16207", "#ca8a04", "#9333ea", "#a855f7", "#be185d", "#db2777", "#dc2626", "#f97316"];
+  const profitItems = ct.skus
+    .filter(s => s.name && s.expectedMonthlyProfit)
+    .map((s, i) => ({ label: s.name, value: s.expectedMonthlyProfit, color: skuColors[i % skuColors.length] }));
+
+  if (profitItems.length > 0) {
+    // donutChart 함수는 백만원 단위 → 만원 단위로 변환해 사용
+    const skuChartItems = profitItems.map(p => ({ label: p.label, value: p.value / 1000000, color: p.color }));
+    document.getElementById("commerce-chart-svg").innerHTML = donutChart(skuChartItems, 220);
+
+    const totalProfit = profitItems.reduce((s, p) => s + p.value, 0);
+    document.getElementById("commerce-chart-legend").innerHTML = profitItems.map(p => `
+      <div class="m-chart-legend-item">
+        <span class="m-chart-legend-dot" style="background:${p.color}"></span>
+        <span class="m-chart-legend-name">${p.label}</span>
+        <span class="m-chart-legend-pct">${fmt(p.value)} (${(p.value/totalProfit*100).toFixed(0)}%)</span>
+      </div>
+    `).join("") + `
+      <div class="m-chart-legend-item" style="border-top:1px solid var(--line); padding-top:8px; margin-top:4px; font-weight:600;">
+        <span class="m-chart-legend-name">합계 / 월</span>
+        <span class="m-chart-legend-pct">${fmt(totalProfit)}</span>
+      </div>
+      <div style="font-size:11px; color:var(--muted); margin-top:4px;">12월 풀가동 목표 1억 / 현재 ${(totalProfit/100000000*100).toFixed(0)}%</div>
+    `;
+  } else {
+    document.getElementById("commerce-chart-svg").innerHTML = '<div style="color:var(--muted); padding:40px;">SKU 등록 시 차트 표시</div>';
+    document.getElementById("commerce-chart-legend").innerHTML = "";
+  }
+
+  // ─── YOUTUBE ────────────────────────────────
+  const yt = STATE.youtubeRoadmap;
+
+  // 채널 정보
+  document.getElementById("yt-channel-row").innerHTML = `
+    <div class="yt-channel primary">
+      <div class="yt-channel-label">메인 채널 · 집중</div>
+      <div class="yt-channel-name">${yt.primary.name}</div>
+      <div class="yt-channel-target">${yt.primary.target} · 현재 ${yt.primary.currentSubscribers.toLocaleString()}</div>
+      <div class="yt-channel-tone">톤: ${yt.primary.tone}</div>
+    </div>
+    <div class="yt-channel">
+      <div class="yt-channel-label">확장 채널 · 후속</div>
+      <div class="yt-channel-name">${yt.secondary.name}</div>
+      <div class="yt-channel-target">셋업 시작: ${yt.secondary.expansionStart} · 본격: ${yt.secondary.fullLaunch}</div>
+      <div class="yt-channel-tone">톤: ${yt.secondary.tone}</div>
+    </div>
+  `;
+
+  // GO 신호
+  document.getElementById("go-signals-card").innerHTML = `
+    <div class="go-signals-label">확장 GO 신호 — ${yt.goSignals.filter(g => g.status === "OK").length} / ${yt.goSignals.length} 켜짐</div>
+    ${yt.goSignals.map(g => `
+      <div class="go-signal-item">
+        <div class="go-signal-status ${g.status === "OK" ? "ok" : ""}"></div>
+        <div>${g.signal}</div>
+        <div class="go-signal-date">${g.expectedDate}</div>
+      </div>
+    `).join("")}
+  `;
+
+  // 페이즈 카드
+  document.getElementById("yt-phases").innerHTML = yt.phases.map(p => `
+    <div class="yt-phase ${p.currentPhase ? "current" : ""}" data-yt-phase="${p.id}">
+      ${p.currentPhase ? '<div class="yt-phase-marker">현재</div>' : ""}
+      <div class="yt-phase-num">PHASE ${p.id}</div>
+      <div class="yt-phase-name">${p.name}</div>
+      <div class="yt-phase-period">${p.period}</div>
+      <div class="yt-phase-range">${p.subscribersRange[0].toLocaleString()} → ${p.subscribersRange[1].toLocaleString()}</div>
+    </div>
+  `).join("");
+
+  // 페이즈 디테일 렌더
+  function renderYtPhaseDetail(phaseId) {
+    const p = yt.phases.find(x => x.id === phaseId);
+    if (!p) return;
+    document.getElementById("yt-detail-name").textContent = `P${p.id} ${p.name} (${p.period})`;
+    const mList = (arr) => arr.length === 0
+      ? `<div class="yt-mission-empty">아직 시작 전</div>`
+      : `<ul class="yt-mission-list">${arr.map(m => `<li>${m}</li>`).join("")}</ul>`;
+    document.getElementById("yt-detail").innerHTML = `
+      <div class="yt-mission-block">
+        <div class="yt-mission-channel">
+          <div class="yt-mission-channel-name">📺 소문의섬</div>
+          ${mList(p.somun)}
+        </div>
+        <div class="yt-mission-channel ${p.yeokjeon.length === 0 ? "empty" : ""}">
+          <div class="yt-mission-channel-name">🎯 역전야매치트키</div>
+          ${mList(p.yeokjeon)}
+        </div>
+      </div>
+    `;
+    // 선택 상태
+    document.querySelectorAll(".yt-phase").forEach(c => c.classList.remove("selected"));
+    document.querySelector(`.yt-phase[data-yt-phase="${phaseId}"]`).classList.add("selected");
+  }
+
+  document.querySelectorAll(".yt-phase").forEach(c => {
+    c.addEventListener("click", () => renderYtPhaseDetail(parseInt(c.dataset.ytPhase)));
+  });
+
+  // 기본: 현재 페이즈
+  const currentYtPhase = yt.phases.find(p => p.currentPhase) || yt.phases[0];
+  renderYtPhaseDetail(currentYtPhase.id);
+
+  // ─── SAAS (상페마법사) ──────────────────────
+  const sa = STATE.saasRoadmap;
+  const targetAcc = sa.targetAccountsAtPeak;
+  const monthlyAtPeak = sa.targetMonthlyProfit;
+
+  // KPI
+  document.getElementById("saas-kpi").innerHTML = `
+    <div class="big-progress">
+      <div class="big-progress-label">MVP 완성률</div>
+      <div class="big-progress-value">${sa.mvpProgress}%</div>
+      <div class="big-progress-bar"><div class="big-progress-fill" style="width:${sa.mvpProgress}%"></div></div>
+    </div>
+    <div class="big-progress">
+      <div class="big-progress-label">유료 계정 진도</div>
+      <div class="big-progress-value">${sa.currentAccounts} / ${targetAcc}</div>
+      <div class="big-progress-bar"><div class="big-progress-fill" style="width:${sa.currentAccounts/targetAcc*100}%"></div></div>
+    </div>
+    <div class="big-progress">
+      <div class="big-progress-label">12월 풀가동 목표</div>
+      <div class="big-progress-value">${fmt(monthlyAtPeak)}/월</div>
+      <div style="font-size:11px; color:var(--muted); margin-top:4px;">${sa.pricing}</div>
+    </div>
+    <div class="big-progress">
+      <div class="big-progress-label">현재 MRR</div>
+      <div class="big-progress-value">${fmt(sa.currentAccounts * 140000)}</div>
+      <div style="font-size:11px; color:var(--muted); margin-top:4px;">계정 × Pro 평균 (월 14만) 가정</div>
+    </div>
+  `;
+
+  // 가격 플랜
+  document.getElementById("pricing-grid").innerHTML = sa.pricingPlans.map(p => `
+    <div class="pricing-card ${p.recommended ? "recommended" : ""}">
+      ${p.recommended ? '<div class="pricing-recommended-badge">RECOMMENDED</div>' : ""}
+      <div class="pricing-name">${p.name}</div>
+      <div class="pricing-price-row">
+        <span class="pricing-price">${p.price === 0 ? "무료" : fmt(p.price)}</span>
+        <span class="pricing-period">${p.price === 0 ? "" : "/ " + p.period}</span>
+      </div>
+      <div class="pricing-target">${p.target}</div>
+      <ul class="pricing-features">
+        ${p.features.map(f => `<li>${f}</li>`).join("")}
+      </ul>
+    </div>
+  `).join("");
+
+  // 페이즈 카드
+  document.getElementById("saas-phases").innerHTML = sa.phases.map(p => `
+    <div class="yt-phase ${p.currentPhase ? "current" : ""}" data-saas-phase="${p.id}">
+      ${p.currentPhase ? '<div class="yt-phase-marker">현재</div>' : ""}
+      <div class="yt-phase-num">PHASE ${p.id}</div>
+      <div class="yt-phase-name">${p.name}</div>
+      <div class="yt-phase-period">${p.period}</div>
+      <div class="yt-phase-range">${p.accountsRange[0]} → ${p.accountsRange[1]} 계정</div>
+    </div>
+  `).join("");
+
+  // 페이즈 디테일
+  function renderSaasPhaseDetail(phaseId) {
+    const p = sa.phases.find(x => x.id === phaseId);
+    if (!p) return;
+    document.getElementById("saas-detail-name").textContent = `P${p.id} ${p.name} (${p.period})`;
+    document.getElementById("saas-detail").innerHTML = `
+      <div class="yt-mission-channel">
+        <div class="yt-mission-channel-name">🪄 ${sa.product}</div>
+        <ul class="yt-mission-list">
+          ${p.missions.map(m => `<li>${m}</li>`).join("")}
+        </ul>
+      </div>
+    `;
+    document.querySelectorAll(`.yt-phase[data-saas-phase]`).forEach(c => c.classList.remove("selected"));
+    document.querySelector(`.yt-phase[data-saas-phase="${phaseId}"]`).classList.add("selected");
+  }
+
+  document.querySelectorAll(".yt-phase[data-saas-phase]").forEach(c => {
+    c.addEventListener("click", () => renderSaasPhaseDetail(parseInt(c.dataset.saasPhase)));
+  });
+  const currentSaasPhase = sa.phases.find(p => p.currentPhase) || sa.phases[0];
+  renderSaasPhaseDetail(currentSaasPhase.id);
+
+  // 시장 크기 분석 (토글)
+  const ma = sa.marketAnalysis;
+  document.getElementById("market-toggle-title").textContent = ma.title;
+  document.getElementById("market-toggle-summary").textContent = ma.summary;
+
+  document.getElementById("market-content").innerHTML = `
+    <div class="market-block">
+      <div class="market-block-title">📊 거시 데이터</div>
+      <div class="market-data-grid">
+        ${ma.macroData.map(d => `
+          <div class="market-data-item">
+            <span class="market-data-label">${d.label}</span>
+            <span class="market-data-value">${d.value}</span>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+
+    <div class="market-block">
+      <div class="market-block-title">🎯 TAM / SAM / SOM</div>
+      <div class="tam-sam-som">
+        ${ma.tamSamSom.map(t => `
+          <div class="tam-tier ${t.tier.toLowerCase()}">
+            <div class="tam-tier-label">${t.tier}</div>
+            <div class="tam-tier-name">${t.label}</div>
+            <div class="tam-tier-value">${t.value}</div>
+            <div class="tam-tier-note">${t.note}</div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+
+    <div class="market-block">
+      <div class="market-block-title">📈 침투율 시나리오</div>
+      ${ma.keyAnchor ? `
+        <div style="background: var(--accent); color: white; padding: 12px 16px; border-radius: 4px; margin-bottom: 12px;">
+          <div style="font-size: 13px; font-weight: 600; margin-bottom: 4px;">${ma.keyAnchor.title}</div>
+          <div style="font-size: 11px; opacity: 0.9; line-height: 1.5;">${ma.keyAnchor.note}</div>
+        </div>
+      ` : ""}
+      <table class="penetration-table">
+        <thead>
+          <tr>
+            <th class="left">시점</th>
+            <th>침투율</th>
+            <th>계정 수</th>
+            <th>월 매출</th>
+            <th>연 환산</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${ma.penetrationScenarios.map((s, i) => `
+            <tr class="${s.anchor ? "target" : (i === 0 ? "target" : "")}">
+              <td class="left">${s.label}</td>
+              <td>${s.rate}</td>
+              <td>${s.accounts}</td>
+              <td>${s.monthlyRevenue}</td>
+              <td>${s.annual}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="market-block">
+      <div class="market-block-title">🆚 미리캔버스 vs 상페마법사 — 시장 위치</div>
+      <div class="vs-grid">
+        <div class="vs-card us">
+          <div class="vs-card-name">${ma.vsCompetitor.us.name}</div>
+          <div class="vs-row"><span>TAM</span><strong>${ma.vsCompetitor.us.tam}</strong></div>
+          <div class="vs-row"><span>범위</span><span>${ma.vsCompetitor.us.scope}</span></div>
+          <div class="vs-row"><span>가격</span><strong>${ma.vsCompetitor.us.price}</strong></div>
+        </div>
+        <div class="vs-card">
+          <div class="vs-card-name">${ma.vsCompetitor.them.name}</div>
+          <div class="vs-row"><span>TAM</span><strong>${ma.vsCompetitor.them.tam}</strong></div>
+          <div class="vs-row"><span>범위</span><span>${ma.vsCompetitor.them.scope}</span></div>
+          <div class="vs-row"><span>가격</span><strong>${ma.vsCompetitor.them.price}</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="market-block">
+      <div class="market-block-title">💡 인사이트</div>
+      <ul class="insight-list">${ma.insights.map(i => `<li>${i}</li>`).join("")}</ul>
+    </div>
+
+    <div class="market-block">
+      <div class="market-block-title">⚠️ 리스크</div>
+      <ul class="risk-list">${ma.risks.map(r => `<li>${r}</li>`).join("")}</ul>
+    </div>
+
+    <div style="font-size: 11px; color: var(--muted); padding: 8px 4px;">
+      Sources: ${ma.sources.join(" · ")}
+    </div>
+  `;
+
+  document.getElementById("market-toggle-header").addEventListener("click", () => {
+    document.getElementById("market-toggle-header").classList.toggle("expanded");
+    document.getElementById("market-content").classList.toggle("expanded");
+  });
+
+  // 경쟁사 비교
+  const cc = sa.competitorComparison;
+  document.getElementById("competitor-name").textContent = cc.competitor;
+  document.getElementById("competitor-scale").textContent = cc.competitorScale;
+  document.getElementById("competitor-card").innerHTML = `
+    <table class="competitor-table">
+      <thead>
+        <tr>
+          <th class="label"></th>
+          <th class="us">상페마법사</th>
+          <th>${cc.competitor}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${cc.rows.map(r => `
+          <tr>
+            <td class="label">${r.item}</td>
+            <td class="us">${r.us}</td>
+            <td>${r.them}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+    <div class="competitor-insights">
+      <div class="competitor-insights-label">💡 인사이트</div>
+      <ul>
+        ${cc.insights.map(i => `<li>${i}</li>`).join("")}
+      </ul>
+    </div>
+  `;
+
+  // Pro 300명 기준 시나리오
+  const proAnchor = 300;
+  const litePrice = sa.pricingPlans.find(p => p.name === "Lite").price;
+  const proPrice = sa.pricingPlans.find(p => p.name === "Pro").price;
+  const proMaxPrice = sa.pricingPlans.find(p => p.name === "Pro Max").price;
+
+  document.getElementById("pro-scenario-grid").innerHTML = sa.proBasedScenarios.map(sc => {
+    const r = sc.ratio;
+    const totalPaid = Math.round(proAnchor / (r.pro / 100));
+    const liteCount = Math.round(totalPaid * r.lite / 100);
+    const proCount = proAnchor;
+    const proMaxCount = Math.round(totalPaid * r.proMax / 100);
+    const revenue = liteCount * litePrice + proCount * proPrice + proMaxCount * proMaxPrice;
+    return `
+      <div class="pro-scenario ${sc.recommended ? "recommended" : ""}">
+        <div class="pro-scenario-name">${sc.name}</div>
+        <div class="pro-scenario-note">${sc.note} · L:P:Max = ${r.lite}:${r.pro}:${r.proMax}</div>
+        <div class="pro-scenario-row"><span>Lite</span><span>${liteCount}명</span></div>
+        <div class="pro-scenario-row pro-row"><span>Pro</span><span>${proCount}명</span></div>
+        <div class="pro-scenario-row"><span>Pro Max</span><span>${proMaxCount}명</span></div>
+        <div class="pro-scenario-row" style="color:var(--muted); padding-top:8px; border-top:1px dashed var(--line-soft); margin-top:4px;"><span>유료 합</span><span>${totalPaid}명</span></div>
+        <div class="pro-scenario-revenue"><span>월 매출</span><span>${fmt(revenue)}</span></div>
+      </div>
+    `;
+  }).join("");
+
+  // 구독자 → 가입자 전환표
+  const conv = sa.subscriberConversion;
+  const targetMonthly = sa.targetMonthlyProfit;
+  const maxRevenue = conv.milestones[conv.milestones.length - 1].subscribers * conv.rate * conv.retention * conv.avgPrice;
+  const tableRows = conv.milestones.map(m => {
+    const cumulative = Math.round(m.subscribers * conv.rate);
+    const active = Math.round(cumulative * conv.retention);
+    const monthly = active * conv.avgPrice;
+    const pctOfTarget = (monthly / targetMonthly) * 100;
+    const barWidth = Math.min(100, (monthly / maxRevenue) * 100);
+    let cls = "";
+    if (m.label === "풀가동") cls = "target";
+    else if (m.label === "원씽") cls = "onething";
+    return `
+      <tr class="${cls}">
+        <td class="left">${m.subscribers.toLocaleString()}${m.label ? `<span class="conv-label">${m.label}</span>` : ""}</td>
+        <td>${cumulative.toLocaleString()}</td>
+        <td>${active.toLocaleString()}</td>
+        <td>${fmt(monthly)}</td>
+        <td>${pctOfTarget.toFixed(0)}%<span class="conv-bar-wrap"><span class="conv-bar" style="width:${Math.min(100, pctOfTarget/3)}%; display:block;"></span></span></td>
+      </tr>
+    `;
+  }).join("");
+  document.getElementById("conversion-table").innerHTML = `
+    <table class="conversion-table">
+      <thead>
+        <tr>
+          <th class="left">구독자 수</th>
+          <th>누적 가입</th>
+          <th>Active 유료</th>
+          <th>월 매출</th>
+          <th>3천만 목표 대비</th>
+        </tr>
+      </thead>
+      <tbody>${tableRows}</tbody>
+    </table>
+  `;
+
+  // ─── 셀러 도구 (marketingTools) ─────────────
+  const mt = STATE.marketingTools;
+  document.getElementById("tools-title").textContent = mt.title;
+  document.getElementById("tools-summary").textContent = mt.summary + " · 12월 풀가동 월 " + fmt(mt.monthlyTargetProfit);
+
+  // 3 프로그램 카드
+  document.getElementById("tools-programs").innerHTML = mt.programs.map(p => {
+    const isEmpty = !p.name || p.name.includes("미정");
+    return `
+      <div class="tool-card ${isEmpty ? "empty" : ""}">
+        <div class="tool-num">PROGRAM #${p.id}</div>
+        <div class="tool-name">${p.name}</div>
+        <span class="tool-status-badge s-${p.status}">${p.status}</span>
+        <div class="tool-meta-row"><span class="tool-meta-label">가격</span><span class="tool-meta-value">${p.price ? fmt(p.price) : "—"}</span></div>
+        <div class="tool-meta-row"><span class="tool-meta-label">누적 판매</span><span class="tool-meta-value">${p.cumulativeSales || 0} 건</span></div>
+        <div class="tool-meta-row"><span class="tool-meta-label">월 매출</span><span class="tool-meta-value">${p.monthlyRevenue ? fmt(p.monthlyRevenue) : "—"}</span></div>
+        ${p.note ? `<div class="tool-note">${p.note}</div>` : ""}
+      </div>
+    `;
+  }).join("");
+
+  // 페이즈 카드
+  document.getElementById("tools-phases").innerHTML = mt.phases.map(p => `
+    <div class="yt-phase ${p.currentPhase ? "current" : ""}" data-tools-phase="${p.id}">
+      ${p.currentPhase ? '<div class="yt-phase-marker">현재</div>' : ""}
+      <div class="yt-phase-num">PHASE ${p.id}</div>
+      <div class="yt-phase-name">${p.name}</div>
+      <div class="yt-phase-period">${p.period}</div>
+    </div>
+  `).join("");
+
+  function renderToolsPhaseDetail(phaseId) {
+    const p = mt.phases.find(x => x.id === phaseId);
+    if (!p) return;
+    document.getElementById("tools-detail-name").textContent = `P${p.id} ${p.name} (${p.period})`;
+    document.getElementById("tools-detail").innerHTML = `
+      <div class="yt-mission-channel">
+        <div class="yt-mission-channel-name">🛠 ${p.name}</div>
+        <ul class="yt-mission-list">
+          ${p.missions.map(m => `<li>${m}</li>`).join("")}
+        </ul>
+      </div>
+    `;
+    document.querySelectorAll(`.yt-phase[data-tools-phase]`).forEach(c => c.classList.remove("selected"));
+    document.querySelector(`.yt-phase[data-tools-phase="${phaseId}"]`).classList.add("selected");
+  }
+  document.querySelectorAll(".yt-phase[data-tools-phase]").forEach(c => {
+    c.addEventListener("click", () => renderToolsPhaseDetail(parseInt(c.dataset.toolsPhase)));
+  });
+  const currentToolsPhase = mt.phases.find(p => p.currentPhase) || mt.phases[0];
+  renderToolsPhaseDetail(currentToolsPhase.id);
+
+  // 후보 풀 (priority + 가격 모델)
+  document.getElementById("tools-candidates").innerHTML = mt.candidatePool.map(c => {
+    const isStar = c.priority && c.priority.includes("★");
+    const isOption = c.priority && c.priority.includes("🟡");
+    const cls = isStar ? "priority-star" : (isOption ? "priority-option" : "priority-secondary");
+    const badge = c.priority ? `<span class="candidate-priority ${cls}">${c.priority}</span>` : "";
+    const priceModel = c.priceModel ? `<span class="price-model-badge ${c.priceModel.includes("구독") ? "sub" : (c.priceModel === "단발" ? "one" : "mix")}">${c.priceModel}</span>` : "";
+    const priceLine = c.estimatedPrice ? `<span style="font-weight:600; color:var(--accent); margin-left:6px;">${fmt(c.estimatedPrice)}/월</span>` : "";
+    return `
+      <div class="candidate-item ${cls}">
+        <div style="display:flex; justify-content:space-between; align-items:start; gap:6px;">
+          <div class="candidate-name">${c.name}</div>
+          ${badge}
+        </div>
+        <div style="margin: 4px 0;">${priceModel}${priceLine}</div>
+        <div class="candidate-skill">/${c.existingSkill}</div>
+        <div class="candidate-note">${c.note}</div>
+      </div>
+    `;
+  }).join("");
+
+  // 인사이트 + 가격 정책
+  if (mt.insight) {
+    const insightEl = document.createElement("div");
+    insightEl.style.cssText = "background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 10px 14px; margin-top: 12px; border-radius: 4px; font-size: 12px; color: var(--fg);";
+    let html = `<strong style="color: var(--accent);">💡 인사이트:</strong> ${mt.insight}`;
+    if (mt.pricingPolicy) {
+      html += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line);"><strong style="color: var(--accent); font-size: 11px;">💰 가격 정책</strong><ul style="margin: 4px 0 0; padding-left: 18px;">${mt.pricingPolicy.map(p => `<li style="margin: 2px 0;">${p}</li>`).join("")}</ul></div>`;
+    }
+    insightEl.innerHTML = html;
+    document.getElementById("tools-candidates").parentNode.appendChild(insightEl);
+  }
+
+  // 채널
+  document.getElementById("tools-channels").innerHTML = mt.channels.map(c => `
+    <div class="channel-card">
+      <div class="channel-role">${c.role}</div>
+      <div class="channel-name">${c.name}</div>
+      <div class="channel-note">${c.note}</div>
+    </div>
+  `).join("");
+
+  // 로드맵 뷰 토글
+  document.querySelectorAll(".view-toggle button").forEach(b => {
+    b.addEventListener("click", () => {
+      const v = b.dataset.view;
+      document.querySelectorAll(".view-toggle button").forEach(x => x.classList.remove("active"));
+      document.querySelectorAll(".view-content").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      document.querySelector(`.view-content[data-view="${v}"]`).classList.add("active");
+    });
+  });
+
+  // Phases (로드맵 탭)
+  document.getElementById("phases").innerHTML = STATE.phases.map(p => `
+    <div class="phase ${p.currentPhase ? "current" : ""}">
+      ${p.currentPhase ? '<div class="phase-marker">현재</div>' : ""}
+      <div class="phase-num">PHASE ${p.id}</div>
+      <div class="phase-name">${p.name}</div>
+      <div class="phase-period">${p.period} · ${p.years}년</div>
+      <div class="phase-target">${fmt(p.targetRange[0])} ~ ${fmt(p.targetRange[1])}</div>
+      <ul class="phase-actions">${p.actions.map(a => `<li>${a}</li>`).join("")}</ul>
+    </div>
+  `).join("");
+
+  // Quarters (phase별 컬러)
+  const phaseClass = { "지남": "q-past", "준비": "q-prep", "수확": "q-harvest", "피크": "q-peak" };
+  const maxQ = Math.max(...STATE.year2026.quarters.map(q => q.target));
+  document.getElementById("quarters").innerHTML = STATE.year2026.quarters.map(q => `
+    <div class="quarter ${phaseClass[q.phase] || ""}">
+      ${q.phase ? `<span class="q-phase-badge">${q.phase}</span>` : ""}
+      <div class="q-label">${q.name} · ${q.months}</div>
+      <div class="q-target">${fmt(q.target)}</div>
+      <div class="q-month">${q.actual === null ? "실적 미정" : "실적 " + fmt(q.actual)}</div>
+      <div class="q-bar-wrap"><div class="q-bar" style="width:${(q.target / maxQ) * 100}%"></div></div>
+      <div class="q-note">${q.note}</div>
+    </div>
+  `).join("");
+
+  // Monthly Ramp (phase 컬러)
+  const rampClass = { "지남": "r-past", "준비": "r-prep", "수확": "r-harvest", "피크": "r-peak" };
+  const maxRamp = Math.max(...STATE.year2026.monthlyRamp.map(r => r.t));
+  document.getElementById("ramp").innerHTML = STATE.year2026.monthlyRamp.map(r => `
+    <div class="ramp-bar ${rampClass[r.phase] || ""}" style="height:${(r.t / maxRamp) * 100}%">
+      <span class="bar-tip">${r.m} · ${fmtKR(r.t)} (${r.phase})</span>
+    </div>
+  `).join("");
+  document.getElementById("ramp-labels").innerHTML = STATE.year2026.monthlyRamp.map(r => `<span>${r.m}</span>`).join("");
+
+  // 로드맵 탭 — 이번달 카드
+  document.getElementById("rm-month").textContent = m.month;
+  document.getElementById("rm-month-card").innerHTML = `
+    <div class="quarter">
+      <div class="q-label">${m.month} · ${m.note}</div>
+      <div style="display: flex; gap: 32px; margin: 8px 0;">
+        <div><div class="q-label">목표</div><div class="q-target">${fmt(m.target)}</div></div>
+        <div><div class="q-label">실적</div><div class="q-target">${m.actual === null ? "미정" : fmt(m.actual)}</div></div>
+      </div>
+      <div class="q-note"><strong>핵심 마일스톤</strong></div>
+      <div class="q-note">${m.keyMilestones.map(km => `· ${km}`).join("<br>")}</div>
+    </div>
+  `;
+
+  // 로드맵 탭 — 이번주 카드 (요약)
+  document.getElementById("rm-week").textContent = w.label;
+  document.getElementById("rm-week-card").innerHTML = `
+    <div class="checklist">${weekProgressHTML}</div>
+  `;
+
+  // Revenue Mix (12월 풀가동 월 순익 / 6개월 누적 순익)
+  let mixHTML = `<tr><th>수익원</th><th style="text-align:right;">12월 월 순익</th><th style="text-align:right;">하반기 누적</th><th>비고</th></tr>`;
+  let totalProfit6m = 0;
+  mixHTML += STATE.year2026.revenueMix.map(r => {
+    totalProfit6m += (r.profit6m || 0);
+    const peakStr = r.monthlyAtPeak === null ? '<span style="color:var(--muted);">단발 Q4</span>' : fmtKR(r.monthlyAtPeak) + "/월";
+    return `<tr>
+      <td>${r.src}</td>
+      <td class="num">${peakStr}</td>
+      <td class="num">${fmtKR(r.profit6m)}</td>
+      <td class="note">${r.note}</td>
+    </tr>`;
+  }).join("");
+
+  mixHTML += `
+    <tr style="font-weight:600; border-top:2px solid var(--fg);">
+      <td>합계 (최소값)</td>
+      <td class="num">1.4억/월 + Q4 5천</td>
+      <td class="num">${fmtKR(totalProfit6m)}</td>
+      <td class="note">"더 잘 나올 수 있다" — 최소값 기준</td>
+    </tr>
+  `;
+  document.getElementById("revenue-mix").innerHTML = mixHTML;
+
+  // Portfolio
+  const colors = ["#1e3a8a", "#0e7490", "#65a30d", "#a16207", "#9333ea"];
+  document.getElementById("legend").innerHTML = STATE.portfolio.sources.map((s, i) => `
+    <span class="legend"><span class="legend-dot" style="background:${colors[i]}"></span>${s.name}</span>
+  `).join("");
+  document.getElementById("portfolio").innerHTML = STATE.portfolio.years.map((year, yi) => {
+    const segs = STATE.portfolio.sources.map((s, si) => {
+      const v = s.values[yi];
+      if (v === 0) return "";
+      return `<div class="portfolio-seg" style="background:${colors[si]}; flex: ${v} 0 0;">${v}%</div>`;
+    }).join("");
+    return `<div class="portfolio-row"><div class="portfolio-year">${year}</div><div class="portfolio-stack">${segs}</div></div>`;
+  }).join("");
+
+  // Principles
+  document.getElementById("principles").innerHTML = STATE.principles.map(p => `
+    <div class="principle">
+      <div class="principle-title">${p.title}</div>
+      <div class="principle-desc">${p.desc}</div>
+    </div>
+  `).join("");
+
+  // Data Sources
+  const renderItems = (items, pathKey, roleKey) => items.map(i => `
+    <div class="src-item"><div class="src-path">${i[pathKey]}</div><div class="src-role">${i[roleKey]}</div></div>
+  `).join("");
+  document.getElementById("src-files").innerHTML = renderItems(STATE.dataSources.files, "path", "role");
+  document.getElementById("src-reminders").innerHTML = renderItems(STATE.dataSources.reminders, "name", "role");
+  document.getElementById("src-notion").innerHTML = renderItems(STATE.dataSources.notion, "name", "role");
+  document.getElementById("last-updated").textContent = STATE.meta.lastUpdated;
+
+  // Tabs
+  document.querySelectorAll(".tab").forEach(t => {
+    t.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach(x => x.classList.remove("active"));
+      t.classList.add("active");
+      document.getElementById("panel-" + t.dataset.panel).classList.add("active");
+    });
+  });
+</script>
+</body>
+</html>

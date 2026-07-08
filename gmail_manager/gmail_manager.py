@@ -362,11 +362,45 @@ def cmd_send_mail(args):
     email = resolve_account(args.account)
     service = get_service(email)
 
-    from email.mime.text import MIMEText
-    message = MIMEText(args.body, "plain", "utf-8")
-    message["to"] = args.to
-    message["from"] = email
-    message["subject"] = args.subject
+    # 첨부파일 경로 파싱 (쉼표 구분, 공백 트림)
+    attach_paths = []
+    if getattr(args, "attach", None):
+        attach_paths = [p.strip() for p in args.attach.split(",") if p.strip()]
+        missing = [p for p in attach_paths if not os.path.isfile(os.path.expanduser(p))]
+        if missing:
+            print(f"[오류] 첨부파일을 찾을 수 없어요: {missing}")
+            exit(1)
+
+    if attach_paths:
+        # 첨부 있으면 multipart
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+        from email.mime.base import MIMEBase
+        from email import encoders
+        import mimetypes
+        message = MIMEMultipart()
+        message["to"] = args.to
+        message["from"] = email
+        message["subject"] = args.subject
+        message.attach(MIMEText(args.body, "plain", "utf-8"))
+        for p in attach_paths:
+            path = os.path.expanduser(p)
+            ctype, _ = mimetypes.guess_type(path)
+            maintype, subtype = (ctype.split("/", 1) if ctype else ("application", "octet-stream"))
+            with open(path, "rb") as fh:
+                part = MIMEBase(maintype, subtype)
+                part.set_payload(fh.read())
+            encoders.encode_base64(part)
+            fname = os.path.basename(path)
+            # 한글 파일명 RFC2231 인코딩
+            part.add_header("Content-Disposition", "attachment", filename=fname)
+            message.attach(part)
+    else:
+        from email.mime.text import MIMEText
+        message = MIMEText(args.body, "plain", "utf-8")
+        message["to"] = args.to
+        message["from"] = email
+        message["subject"] = args.subject
 
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     service.users().messages().send(userId="me", body={"raw": raw}).execute()
@@ -375,6 +409,8 @@ def cmd_send_mail(args):
     print(f"  발신: {email}")
     print(f"  수신: {args.to}")
     print(f"  제목: {args.subject}")
+    if attach_paths:
+        print(f"  첨부: {[os.path.basename(p) for p in attach_paths]}")
     print(f"  본문: {args.body}")
 
 
@@ -402,6 +438,7 @@ def main():
     parser.add_argument("--to", help="수신자 이메일")
     parser.add_argument("--subject", help="메일 제목")
     parser.add_argument("--body", help="메일 본문")
+    parser.add_argument("--attach", help="첨부파일 경로 (쉼표로 구분, 예: a.pdf,b.jpg)")
 
     args = parser.parse_args()
 

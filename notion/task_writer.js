@@ -39,9 +39,9 @@ import { readFileSync } from 'fs';
 import { getChildren, appendBlocks, getText } from './notion_api.js';
 
 const CALLOUTS = {
-  '지혜':   '2f1111a5-7788-81e0-b79e-ec85bbc540c5',
+  '지혜':   'd4efb134-0717-45e8-ae80-97ba9792f3c4',
   '현빈02': '2f1111a5-7788-8127-951b-c2b17188efff',
-  '수지':   '2e6111a5-7788-80a6-a2f7-cfca611ea5b7',
+  '수지':   '2d369b19-f3a4-4e49-84d3-8c0c08d9bb1f',
   '현빈':   '8bcea4ed47cb46ae90d7dfa888e09c16'
 };
 
@@ -80,7 +80,7 @@ async function appendComplexDetail(todoBlockId, taskObj) {
   if (background) detailBlocks.push({ object: 'block', type: 'paragraph',         paragraph:         { rich_text: rt(`📍 ${background}`) } });
   if (input)      detailBlocks.push({ object: 'block', type: 'bulleted_list_item', bulleted_list_item:{ rich_text: rt(`인풋: ${input}`) } });
   if (output)     detailBlocks.push({ object: 'block', type: 'bulleted_list_item', bulleted_list_item:{ rich_text: rt(`아웃풋: ${output}`) } });
-  if (comment)    detailBlocks.push({ object: 'block', type: 'paragraph',         paragraph:         { rich_text: rt(`👉 ${comment}`) } });
+  if (comment)    detailBlocks.push({ object: 'block', type: 'paragraph',         paragraph:         { rich_text: rt(`→ ${comment}`) } });
 
   if (detailBlocks.length) {
     await appendBlocks(toggleId, detailBlocks);
@@ -121,6 +121,10 @@ async function addTasksForPerson(entry) {
     }]);
     dateToggle = res.results[0];
     log(`  📅 "${date}" 토글 새로 생성`);
+    await appendBlocks(dateToggle.id, [{
+      object: 'block', type: 'paragraph',
+      paragraph: { rich_text: rt('📍 이 업무요청은 클로드 코드를 통해 전달되었습니다.') }
+    }]);
   }
 
   // 모든 task를 단순 to_do로 먼저 일괄 추가

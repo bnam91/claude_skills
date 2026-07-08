@@ -155,8 +155,11 @@ def _add_membership_to_db(db_path, list_name, reminder_id, section_ckid):
             conn.close()
             return False
         list_pk, blob = row[0], row[1]
-        data = blob.decode("utf-8", errors="ignore") if isinstance(blob, bytes) else blob
-        obj = json.loads(data)
+        if blob is None:
+            obj = {"memberships": []}
+        else:
+            data = blob.decode("utf-8", errors="ignore") if isinstance(blob, bytes) else blob
+            obj = json.loads(data)
         memberships = obj.get("memberships", [])
         memberships.append({
             "memberID": reminder_id,

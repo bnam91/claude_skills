@@ -7,6 +7,23 @@
     {
       "alias": "앱배포",
       "folder_id": "14DrM86w2HrKiJtlUs5bRVmVRFVdxHGb6"
+    },
+    {
+      "alias": "지혜_업무요청",
+      "folder_id": "10yXAFjPwDQfws6j2i7-aTp6s1qWxNsMy",
+      "note": "지혜에게 업무요청할 때 자료 전달하는 폴더 (stepred 구글드라이브 공유)"
+    },
+    {
+      "alias": "동비",
+      "folder_id": "1bWXZVA9nnoFpl6fdKzWAh2K5q6pVUWnz"
+    },
+    {
+      "alias": "22기정규강의",
+      "folder_id": "1mf7aw-p-M2Zx1ZSsp6RMPHx7omJRktxY"
+    },
+    {
+      "alias": "22기하위",
+      "folder_id": "1qXrxXbhSRXrbH6KLd6F2D-AlvdvyKHwY"
     }
   ]
 }

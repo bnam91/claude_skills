@@ -1,0 +1,2389 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>쿠팡 광고 계산기</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
+      min-height: 100vh;
+    }
+
+    .header {
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 16px 24px;
+    }
+    .header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1d1d1f;
+    }
+    .header p {
+      font-size: 12px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+
+    .content {
+      padding: 24px;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1d1d1f;
+      margin-bottom: 4px;
+    }
+    .card-desc {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 6px;
+    }
+    .field-note {
+      font-size: 11px;
+      color: #aaa;
+      margin-top: 3px;
+    }
+    .input-wrap {
+      position: relative;
+    }
+    .input-wrap input {
+      width: 100%;
+      padding: 10px 40px 10px 12px;
+      font-size: 15px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.15s;
+      background: #fafafa;
+    }
+    .input-wrap input:focus {
+      border-color: #E64040;
+      background: #fff;
+    }
+    .input-unit {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 13px;
+      color: #aaa;
+      pointer-events: none;
+    }
+
+    .calc-btn {
+      width: 100%;
+      padding: 13px;
+      background: #E64040;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 4px;
+      transition: background 0.15s;
+    }
+    .calc-btn:hover { background: #cc3535; }
+    .calc-btn:active { background: #b52e2e; }
+
+    .result-box {
+      margin-top: 16px;
+      border-radius: 10px;
+      overflow: hidden;
+      display: none;
+    }
+    .result-box.show { display: block; }
+
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .result-row:last-child { border-bottom: none; }
+    .result-label {
+      font-size: 13px;
+      color: #555;
+    }
+    .result-value {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1d1d1f;
+    }
+    .result-value.highlight {
+      color: #E64040;
+      font-size: 18px;
+    }
+    .result-value.green { color: #2e8b57; }
+    .result-value.orange { color: #e67e22; }
+    .result-value.red { color: #E64040; }
+
+    .result-header {
+      background: #fef5f5;
+      padding: 10px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #E64040;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .badge-green { background: #e8f8f0; color: #2e8b57; }
+    .badge-orange { background: #fef5e6; color: #e67e22; }
+    .badge-red { background: #fef0f0; color: #E64040; }
+
+    .formula-box {
+      background: #f5f5f7;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 16px;
+      font-family: monospace;
+      line-height: 1.6;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .calc-nav-sep {
+      font-size: 10px;
+      font-weight: 700;
+      color: #bbb;
+      letter-spacing: 1px;
+      padding: 12px 6px 6px;
+    }
+    .home-left.split .calc-nav-sep { font-size: 9px; padding: 10px 4px 4px; }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #f0f0f0;
+      margin: 16px 0;
+    }
+
+    .tip-box {
+      background: #fffbf0;
+      border-left: 3px solid #f0b429;
+      border-radius: 0 8px 8px 0;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #7a5c00;
+      line-height: 1.6;
+      margin-top: 12px;
+    }
+
+    /* 가이드 */
+    .guide-card {
+      background: #f0f6ff;
+      border-radius: 14px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .guide-toggle {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-align: left;
+    }
+    .guide-toggle-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .guide-icon { font-size: 16px; }
+    .guide-toggle-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #2a5bd7;
+    }
+    .guide-toggle-sub {
+      font-size: 11px;
+      color: #7a9ed4;
+      margin-top: 1px;
+    }
+    .guide-chevron {
+      font-size: 12px;
+      color: #7a9ed4;
+      transition: transform 0.2s;
+    }
+    .guide-chevron.open { transform: rotate(180deg); }
+    .guide-body {
+      display: none;
+      padding: 0 18px 16px;
+      border-top: 1px solid #d8e8ff;
+    }
+    .guide-body.open { display: block; }
+
+    .guide-step {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+      align-items: flex-start;
+    }
+    .guide-step-num {
+      min-width: 22px;
+      height: 22px;
+      background: #2a5bd7;
+      color: #fff;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+    }
+    .guide-step-text {
+      font-size: 12px;
+      color: #333;
+      line-height: 1.6;
+    }
+    .guide-step-text b { color: #2a5bd7; }
+    .guide-step-text .eg {
+      display: inline-block;
+      background: #e8f0ff;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 11px;
+      color: #2a5bd7;
+      margin-top: 3px;
+    }
+    .guide-warn {
+      margin-top: 12px;
+      background: #fff3cd;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 12px;
+      color: #7a5c00;
+      line-height: 1.6;
+    }
+
+    /* 가이드/알고리즘 탭 인라인 split */
+    .guide-split {
+      display: flex;
+      height: calc(100vh - 110px);
+      overflow: hidden;
+      max-width: 1000px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .guide-split-left {
+      overflow-y: auto;
+      background: #f5f5f7;
+      border-right: 1px solid #e8e8e8;
+      width: 100%;
+      transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .guide-split-left.split {
+      width: 50%;
+      min-width: 50%;
+    }
+    .guide-split-left-inner {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 20px 16px;
+      transition: max-width 0.35s, padding 0.35s;
+    }
+    .guide-split-left.split .guide-split-left-inner {
+      max-width: 100%;
+      margin: 0;
+      padding: 16px 12px;
+    }
+    /* split 모드에서 카드 compact 처리 */
+    .guide-split-left.split .card {
+      padding: 14px 16px;
+      font-size: 12px;
+    }
+    .guide-split-left.split .guide-card.gc-active .guide-toggle {
+      background: #e8f0ff;
+      border-radius: 10px;
+    }
+    .guide-split-left.split .guide-card.gc-active .guide-toggle-title {
+      color: #1a3db0;
+    }
+    /* 오른쪽 detail 패널 */
+    .guide-split-right {
+      overflow-y: auto;
+      background: #f5f5f7;
+      width: 0;
+      opacity: 0;
+      transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.28s ease 0.18s;
+      display: flex;
+      flex-direction: column;
+    }
+    .guide-split-right.show {
+      width: 50%;
+      opacity: 1;
+    }
+    .guide-split-right-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #bbb;
+      font-size: 13px;
+      gap: 10px;
+    }
+    .guide-detail-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 20px;
+      border-bottom: 1px solid #e8e8e8;
+      position: sticky;
+      top: 0;
+      background: #f5f5f7;
+      z-index: 1;
+      flex-shrink: 0;
+    }
+    .guide-detail-icon { font-size: 18px; }
+    .guide-detail-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1d1d1f;
+      flex: 1;
+    }
+    .guide-detail-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      color: #bbb;
+      padding: 3px 7px;
+      border-radius: 6px;
+      line-height: 1;
+    }
+    .guide-detail-close:hover { background: #f0f0f0; color: #555; }
+    .guide-detail-body {
+      padding: 18px 20px;
+      flex: 1;
+    }
+
+    /* 홈 탭 */
+    .situation-btn {
+      background: #fff;
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      transition: all 0.15s;
+      border: 1.5px solid transparent;
+    }
+    .situation-btn:hover {
+      border-color: #E64040;
+      box-shadow: 0 2px 10px rgba(230,64,64,0.12);
+    }
+    .sit-icon { font-size: 24px; min-width: 32px; text-align: center; }
+    .sit-text { flex: 1; }
+    .sit-title { font-size: 13px; font-weight: 700; color: #1d1d1f; }
+    .sit-sub { font-size: 11px; color: #888; margin-top: 2px; }
+    .sit-arrow { font-size: 20px; color: #ccc; }
+
+    .road-card {
+      background: #fff;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      margin-bottom: 14px;
+    }
+    .road-header {
+      padding: 14px 18px 10px;
+      border-bottom: 1px solid #f5f5f7;
+    }
+    .road-header-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1d1d1f;
+    }
+    .road-header-desc {
+      font-size: 11px;
+      color: #888;
+      margin-top: 3px;
+      line-height: 1.5;
+    }
+    .road-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 18px;
+      border-bottom: 1px solid #f5f5f7;
+    }
+    .road-step:last-child { border-bottom: none; }
+    .road-num {
+      min-width: 24px;
+      height: 24px;
+      background: #E64040;
+      color: #fff;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+    }
+    .road-num.gray { background: #bbb; }
+    .road-step-body { flex: 1; }
+    .road-step-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #1d1d1f;
+    }
+    .road-step-desc {
+      font-size: 11px;
+      color: #666;
+      margin-top: 3px;
+      line-height: 1.6;
+    }
+    .road-tab-badge {
+      display: inline-block;
+      background: #f0f6ff;
+      color: #2a5bd7;
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-size: 10px;
+      font-weight: 700;
+      margin-top: 4px;
+      cursor: pointer;
+    }
+    .road-tab-badge:hover { background: #2a5bd7; color: #fff; }
+    .road-warn {
+      background: #fff3cd;
+      padding: 10px 18px;
+      font-size: 11px;
+      color: #7a5c00;
+      line-height: 1.6;
+    }
+    .road-tip {
+      background: #e8f8f0;
+      padding: 10px 18px;
+      font-size: 11px;
+      color: #2e7d32;
+      line-height: 1.6;
+    }
+
+    /* 홈 탭 */
+    #tab-home .content {
+      max-width: 900px;
+      padding: 0;
+    }
+    .home-split {
+      display: flex;
+      height: calc(100vh - 110px);
+      overflow: hidden;
+      max-width: 1000px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    /* 왼쪽 패널 */
+    .home-left {
+      background: #f5f5f7;
+      border-right: 1px solid #e8e8e8;
+      overflow-y: auto;
+      padding: 16px 12px;
+      /* 초기: 전체 너비에서 중앙 정렬처럼 보이도록 */
+      width: 100%;
+      transition: width 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .home-left.split {
+      width: 50%;
+      min-width: 50%;
+    }
+    .home-left-inner {
+      max-width: 380px;
+      margin: 0 auto;
+      transition: max-width 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .home-left.split .home-left-inner {
+      max-width: 100%;
+      margin: 0;
+    }
+    .home-left-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1d1d1f;
+      padding: 0 6px;
+      margin-bottom: 6px;
+    }
+    .home-left-sub {
+      font-size: 12px;
+      color: #888;
+      padding: 0 6px;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    .home-left.split .home-left-title {
+      font-size: 11px;
+      color: #888;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+    }
+    .home-left.split .home-left-sub { display: none; }
+
+    /* 오른쪽 패널 */
+    .home-right {
+      overflow-y: auto;
+      padding: 20px;
+      background: #f5f5f7;
+      /* 초기: 숨김 */
+      width: 0;
+      opacity: 0;
+      transition: width 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.3s ease 0.15s;
+    }
+    .home-right.show {
+      width: 50%;
+      opacity: 1;
+    }
+    .home-right-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #bbb;
+      font-size: 13px;
+      text-align: center;
+      gap: 10px;
+    }
+    .home-right-empty .empty-icon { font-size: 36px; }
+
+    /* 홈탭 3컬럼 */
+    .home-split.tri .home-left.split  { width: 33.33%; min-width: 33.33%; }
+    .home-split.tri .home-right.show  { width: 33.34%; }
+    .home-calc {
+      overflow: hidden;
+      background: #f5f5f7;
+      border-left: 1px solid #e8e8e8;
+      width: 0;
+      min-width: 0;
+      opacity: 0;
+      transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.28s ease 0.18s;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .home-split.tri .home-calc { width: 33.33%; min-width: 33.33%; opacity: 1; overflow-y: auto; overflow-x: hidden; }
+    .home-calc-header {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid #e8e8e8;
+      position: sticky;
+      top: 0;
+      background: #f5f5f7;
+      z-index: 1;
+      flex-shrink: 0;
+      gap: 8px;
+    }
+    .home-calc-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1d1d1f;
+      flex: 1;
+    }
+    .home-calc-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      color: #bbb;
+      padding: 2px 6px;
+      border-radius: 6px;
+      line-height: 1;
+    }
+    .home-calc-close:hover { background: #e8e8e8; color: #555; }
+    .home-calc-body { padding: 16px; flex: 1; }
+
+    .situation-btn {
+      background: #fff;
+      border-radius: 10px;
+      padding: 13px 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: all 0.15s;
+    }
+    .home-left.split .situation-btn {
+      padding: 11px 12px;
+      margin-bottom: 6px;
+    }
+    .situation-btn:hover {
+      background: #fff;
+      border-color: #E64040;
+    }
+    .situation-btn.active {
+      background: #fff;
+      border-color: #E64040;
+      box-shadow: 0 1px 6px rgba(230,64,64,0.15);
+    }
+    .sit-icon { font-size: 22px; min-width: 28px; text-align: center; }
+    .home-left.split .sit-icon { font-size: 18px; min-width: 24px; }
+    .sit-text { flex: 1; }
+    .sit-title { font-size: 13px; font-weight: 700; color: #1d1d1f; }
+    .home-left.split .sit-title { font-size: 12px; }
+    .sit-sub { font-size: 11px; color: #888; margin-top: 2px; line-height: 1.4; }
+    .home-left.split .sit-sub { font-size: 10px; }
+    .sit-arrow { font-size: 18px; color: #ccc; }
+    .home-left.split .sit-arrow { display: none; }
+
+    /* 상단 탭 바 */
+    .tabs {
+      display: flex;
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 0 24px;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 12px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #888;
+      border: none;
+      background: none;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .tab-btn.active { color: #E64040; border-bottom-color: #E64040; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>쿠팡 광고 계산기</h1>
+  <p>1억맵 강의 기반 · redcombo</p>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('home', this)">🏠 홈</button>
+  <button class="tab-btn" onclick="switchTab('guide', this)">📖 개념 & 철학</button>
+  <button class="tab-btn" onclick="switchTab('roas', this)">최소 ROAS</button>
+  <button class="tab-btn" onclick="switchTab('cpc', this)">CPC 한계가격</button>
+  <button class="tab-btn" onclick="switchTab('ratio', this)">1대1 법칙</button>
+  <button class="tab-btn" onclick="switchTab('adjust', this)">ROAS 조정</button>
+  <button class="tab-btn" onclick="switchTab('algo', this)">🧠 알고리즘 & 팁</button>
+</div>
+
+<!-- 홈 탭 -->
+<div id="tab-home" class="tab-panel active">
+  <div class="home-split" id="home-split">
+    <div class="home-left" id="home-left">
+      <div class="home-left-inner">
+        <div class="home-left-title">지금 어떤 상황인가요?</div>
+        <div class="home-left-sub">상황에 맞는 탭과 순서를 안내해드릴게요.</div>
+        <div class="situation-btn" id="sit-new" onclick="selectSituation('new')"><div class="sit-icon">🆕</div><div class="sit-text"><div class="sit-title">처음 세팅하려고 해요</div><div class="sit-sub">광고를 아직 한 번도 세팅 안 함</div></div></div>
+        <div class="situation-btn" id="sit-early" onclick="selectSituation('early')"><div class="sit-icon">🚀</div><div class="sit-text"><div class="sit-title">세팅 후 초반 투자 중이에요</div><div class="sit-sub">물레방아 돌리는 중</div></div></div>
+        <div class="situation-btn" id="sit-nodisplay" onclick="selectSituation('nodisplay')"><div class="sit-icon">🚫</div><div class="sit-text"><div class="sit-title">광고가 안 돌아요</div><div class="sit-sub">클릭이 거의 없거나 노출이 안 됨</div></div></div>
+        <div class="situation-btn" id="sit-optimize" onclick="selectSituation('optimize')"><div class="sit-icon">📊</div><div class="sit-text"><div class="sit-title">최적화 단계예요</div><div class="sit-sub">효율 개선하고 싶음</div></div></div>
+        <div class="situation-btn" id="sit-lowstock" onclick="selectSituation('lowstock')"><div class="sit-icon">📦</div><div class="sit-text"><div class="sit-title">재고 부족 — 광고비 줄여야 해요</div><div class="sit-sub">재고 소진 전 조절 필요</div></div></div>
+        <div class="situation-btn" id="sit-weird" onclick="selectSituation('weird')"><div class="sit-icon">❓</div><div class="sit-text"><div class="sit-title">수익률이 이상한 것 같아요</div><div class="sit-sub">숫자가 맞지 않는 느낌</div></div></div>
+        <div class="situation-btn" id="sit-priceup" onclick="selectSituation('priceup')"><div class="sit-icon">💰</div><div class="sit-text"><div class="sit-title">판매가 올린 후 재세팅 필요해요</div><div class="sit-sub">가격 인상 후 재계산</div></div></div>
+      </div>
+    </div>
+    <div class="home-right" id="home-right">
+      <div id="home-right-empty" class="home-right-empty">
+        <div class="empty-icon">👈</div>
+        <div>왼쪽에서 현재 상황을 선택하세요</div>
+        <div style="font-size:11px;color:#ccc;">상황에 맞는 순서와 탭을 안내해드립니다</div>
+      </div>
+      <div id="result-content" style="display:none;"></div>
+    </div>
+    <div class="home-calc" id="home-calc">
+      <div class="home-calc-header">
+        <span class="home-calc-title" id="home-calc-title"></span>
+        <button class="home-calc-close" onclick="closeHomeCalc()">✕</button>
+      </div>
+      <div class="home-calc-body" id="home-calc-body"></div>
+    </div>
+  </div>
+</div>
+<!-- /홈 탭 -->
+
+<!-- TAB 0: 개념 & 철학 -->
+<div id="tab-guide" class="tab-panel">
+  <div class="guide-split">
+    <div class="guide-split-left" id="guide-split-left">
+      <div class="guide-split-left-inner">
+
+    <div class="card" style="background:#fff8f0;border:1.5px solid #f0b429;">
+      <div style="font-size:13px;font-weight:700;color:#7a5c00;margin-bottom:6px;">💡 계산기 쓰기 전에 먼저 읽어보세요</div>
+      <div style="font-size:12px;color:#7a5c00;line-height:1.7;">
+        강사(1억맵)의 광고 철학과 개념을 이해하면 계산기의 숫자가 왜 나오는지, 어떻게 써야 하는지 맥락이 잡힙니다.
+      </div>
+    </div>
+
+    <!-- 광고 전략 개괄 -->
+    <div class="guide-card">
+      <button class="guide-toggle" onclick="openPanel('gc-strategy-overview')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">🗺️</span>
+          <div>
+            <div class="guide-toggle-title">1억맵 광고 전략 개괄</div>
+            <div class="guide-toggle-sub">광고비로 랭킹을 사고, 구조를 만든다</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-gc-strategy-overview">›</span>
+      </button>
+      <div class="guide-body" id="gc-strategy-overview">
+        <div style="font-size:15px;font-weight:700;color:#1d1d1f;line-height:1.6;margin-bottom:16px;">
+          광고비로 랭킹을 사고,<br>
+          랭킹으로 <span style="color:#E64040;">광고 없이도 팔리는 구조</span>를 만든다
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0;">
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid #f5f5f7;">
+            <div style="min-width:26px;height:26px;background:#fef0f0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#E64040;margin-top:1px;">1</div>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#1d1d1f;margin-bottom:2px;">시장파괴 가격으로 진입</div>
+              <div style="font-size:11px;color:#888;line-height:1.8;">"시장파괴 가격" = <b style="color:#E64040;">전환율이 높은 가격</b>을 확보하는 것.<br>경쟁사보다 낮은 가격으로 고객이 살 수밖에 없게 만들어야<br>AI가 좋은 자리를 배정한다.</div>
+              <div style="font-size:11px;color:#2a5bd7;background:#f0f6ff;border-radius:6px;padding:8px 10px;margin-top:8px;line-height:1.8;">
+                🤖 쿠팡 AI의 생각:<br>
+                <i>"이 상품은 전환율이 높구나.<br>그렇다면 노출을 시켜줄수록 잘 팔리겠네?<br>같은 구좌·같은 클릭률인 다른 제품보다 전환율이 높으니<br>판매 수수료를 더 챙길 수 있겠군!<br>좋은 자리를 배정해줘야겠어!"</i>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid #f5f5f7;">
+            <div style="min-width:26px;height:26px;background:#fef0f0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#E64040;margin-top:1px;">2</div>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#1d1d1f;margin-bottom:2px;">광고비 팍 투입 — 물레방아 가동</div>
+              <div style="font-size:11px;color:#888;line-height:1.6;">초반엔 손해여도 과감하게 투입. 쿠팡 AI를 설득해 좋은 노출 자리를 배정받는다.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid #f5f5f7;">
+            <div style="min-width:26px;height:26px;background:#fef0f0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#E64040;margin-top:1px;">3</div>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#1d1d1f;margin-bottom:2px;">물레방아 돌면 수도꼭지 잠그기</div>
+              <div style="font-size:11px;color:#888;line-height:1.6;">ROAS 높여 광고비 줄이기. AI는 효율 좋은 광고를 오히려 더 밀어준다.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid #f5f5f7;">
+            <div style="min-width:26px;height:26px;background:#fef0f0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#E64040;margin-top:1px;">4</div>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#1d1d1f;margin-bottom:2px;">데이터로 CPC·ROAS 최적화</div>
+              <div style="font-size:11px;color:#888;line-height:1.6;">100클릭 이상 쌓이면 전환율로 CPC 한계가격 역산. 1대1 법칙으로 광고비 조절.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;">
+            <div style="min-width:26px;height:26px;background:#fef0f0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#E64040;margin-top:1px;">5</div>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#1d1d1f;margin-bottom:2px;">판매가 서서히 올리기</div>
+              <div style="font-size:11px;color:#888;line-height:1.6;">랭킹·구조 확보 후 가격 인상. 7,900원 → 12,500원, 광고+자연 100개/일 구조 완성.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 광고 철학 요약 -->
+    <div class="guide-card">
+      <button class="guide-toggle" onclick="openPanel('gc-philosophy')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">💡</span>
+          <div>
+            <div class="guide-toggle-title">1억맵 광고 철학</div>
+            <div class="guide-toggle-sub">광고는 구조를 만드는 투자다</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-gc-philosophy">›</span>
+      </button>
+      <div class="guide-body" id="gc-philosophy">
+        <div style="font-size:15px;font-weight:700;color:#1d1d1f;line-height:1.6;margin-bottom:16px;">
+          광고는 돈을 버는 수단이 아니라<br>
+          <span style="color:#2a5bd7;">구조를 만드는 투자다</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="min-width:26px;height:26px;background:#f0f6ff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#2a5bd7;margin-top:1px;">1</div>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#1d1d1f;margin-bottom:2px;">광고 = 노출을 돈으로 사는 것</div>
+              <div style="font-size:11px;color:#888;line-height:1.6;">광고비를 올린다고 매출이 비례해서 늘지 않음. 클릭률·전환율이 진짜 레버.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="min-width:26px;height:26px;background:#f0f6ff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#2a5bd7;margin-top:1px;">2</div>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#1d1d1f;margin-bottom:2px;">광고비 = 랭킹을 사는 월세</div>
+              <div style="font-size:11px;color:#888;line-height:1.6;">수익이 안 나도 판매량이 쌓이면 랭킹이 오르고, 랭킹이 오르면 자연매출이 따라온다.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="min-width:26px;height:26px;background:#f0f6ff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#2a5bd7;margin-top:1px;">3</div>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#1d1d1f;margin-bottom:2px;">초반 손해는 구조를 매입하는 비용</div>
+              <div style="font-size:11px;color:#888;line-height:1.6;">7,900원 손해 진입 → 1달 이내 12,500원 인상 + 100개/일 구조 완성. 손해는 투자였다.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="min-width:26px;height:26px;background:#f0f6ff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#2a5bd7;margin-top:1px;">4</div>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#1d1d1f;margin-bottom:2px;">끄는 게 아니라 수도꼭지를 조절하는 것</div>
+              <div style="font-size:11px;color:#888;line-height:1.6;">광고를 끄면 랭킹이 떨어진다. ROAS 숫자 하나로 물줄기를 줄였다 풀었다 하는 것.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="min-width:26px;height:26px;background:#f0f6ff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#2a5bd7;margin-top:1px;">5</div>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#1d1d1f;margin-bottom:2px;">남의 세팅 복붙 불가 — 내 데이터로 직접</div>
+              <div style="font-size:11px;color:#888;line-height:1.6;">똑같은 상품도 계정·시점·상품마다 결과가 다르다. 100클릭 이상 쌓고 내 전환율로 판단.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 광고 효율의 기본 공식 -->
+    <div class="guide-card">
+      <button class="guide-toggle" onclick="openPanel('gc-formula')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">📐</span>
+          <div>
+            <div class="guide-toggle-title">광고 효율의 기본 공식</div>
+            <div class="guide-toggle-sub">노출 × 클릭률 × 전환율 = 판매량</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-gc-formula">›</span>
+      </button>
+      <div class="guide-body" id="gc-formula">
+        <div style="background:#f5f5f7;border-radius:8px;padding:12px 14px;margin-top:4px;font-size:13px;font-weight:700;color:#1d1d1f;text-align:center;letter-spacing:0.5px;">
+          노출 × 클릭률 × 전환율 = 판매량
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:#333;line-height:1.9;">
+          <b style="color:#E64040;">노출</b> — 돈으로 사는 것. 광고비 올린다고 비례해서 늘지 않음. 직접 통제 어려움.<br>
+          <b style="color:#2a5bd7;">클릭률</b> — 올릴 수 있음. 썸네일, 가격, 리뷰, 상품명 최적화로 개선.<br>
+          <b style="color:#2a5bd7;">전환율</b> — 올릴 수 있음. 상세페이지, 가격, 옵션으로 개선.
+        </div>
+        <div style="margin-top:10px;background:#e8f8f0;border-radius:8px;padding:10px 12px;font-size:12px;color:#2e7d32;line-height:1.7;">
+          ✅ 전략의 핵심: 노출은 고정하고 <b>클릭률과 전환율에 집중</b>.<br>
+          전환율 1~2% 상승만으로도 광고 효율이 크게 달라짐.
+        </div>
+      </div>
+    </div>
+
+    <!-- CPC 개념 -->
+    <div class="guide-card">
+      <button class="guide-toggle" onclick="openPanel('gc-cpc-concept')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">💰</span>
+          <div>
+            <div class="guide-toggle-title">CPC 개념</div>
+            <div class="guide-toggle-sub">클릭당 과금 — 단가 높을수록 상단 노출</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-gc-cpc-concept">›</span>
+      </button>
+      <div class="guide-body" id="gc-cpc-concept">
+        <div style="font-size:12px;color:#333;line-height:1.8;margin-top:4px;">
+          <b style="color:#2a5bd7;">CPC (Cost Per Click)</b> — 클릭이 발생할 때마다 광고비 지출.<br>
+          클릭당 단가를 가장 높게 설정한 판매자가 최상단 노출.
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:#555;line-height:1.8;">
+          <b>다른 과금 방식 비교:</b><br>
+          CPM — 노출 1,000회당 과금 (대기업·TV 방식, 판매자에게 불리)<br>
+          CPC — 클릭할 때만 과금 (쿠팡 기본 방식)<br>
+          CPA — 구매할 때만 과금 (가장 효율적이나 단가 높음)
+        </div>
+        <div style="margin-top:10px;background:#f0f6ff;border-radius:8px;padding:10px 12px;font-size:12px;color:#2a5bd7;line-height:1.7;">
+          쿠팡은 CPC를 직접 입력하지 않고 <b>목표 ROAS(광고 수익률)를 입력</b>하면<br>
+          쿠팡 AI가 그 수익률에 맞게 CPC를 자동 조정함.<br>
+          → ROAS 낮게 설정 = CPC 높게 입찰 (공격적)<br>
+          → ROAS 높게 설정 = CPC 낮게 입찰 (보수적)
+        </div>
+      </div>
+    </div>
+
+    <!-- 전환율 높이는 방법 -->
+    <div class="guide-card">
+      <button class="guide-toggle" onclick="openPanel('gc-cvr')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">📈</span>
+          <div>
+            <div class="guide-toggle-title">전환율 높이는 5가지 방법</div>
+            <div class="guide-toggle-sub">카테고리별 목표 전환율 기준 포함</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-gc-cvr">›</span>
+      </button>
+      <div class="guide-body" id="gc-cvr">
+        <div style="font-size:12px;color:#333;line-height:2;margin-top:4px;">
+          <b style="color:#2a5bd7;">① 상세페이지 상단 후킹</b><br>
+          진입 후 5~15초 내에 핵심 1가지(one-point)를 강조. 이탈 방지.<br><br>
+          <b style="color:#2a5bd7;">② 추가 이미지</b><br>
+          미니 상세페이지 개념으로 이미지들을 순차 배치. 구매 설득.<br><br>
+          <b style="color:#2a5bd7;">③ 리뷰 품질 관리</b><br>
+          사진·영상 리뷰로 상단 채우기. 좋은 리뷰가 전환율에 직결.<br><br>
+          <b style="color:#2a5bd7;">④ 판매 가격</b><br>
+          경쟁사 대비 합리적이거나 낮아야 클릭 후 이탈 방지.<br><br>
+          <b style="color:#2a5bd7;">⑤ 옵션 다양화</b><br>
+          원하는 옵션 없으면 즉시 이탈. 고객이 원하는 옵션을 갖출 것.
+        </div>
+        <div style="margin-top:12px;background:#f5f5f7;border-radius:8px;padding:12px 14px;">
+          <div style="font-size:12px;font-weight:700;color:#1d1d1f;margin-bottom:8px;">카테고리별 목표 전환율</div>
+          <div style="font-size:12px;color:#333;line-height:2;">
+            만원대 저가 상품: <b style="color:#2a5bd7;">15~20%</b><br>
+            2만원대 중가 상품: <b style="color:#2a5bd7;">8~12%</b><br>
+            고가 상품 (가구 등): <b style="color:#2a5bd7;">5~10%</b>
+          </div>
+          <div style="font-size:11px;color:#888;margin-top:6px;">전환율 5% 미만 = 광고·자연매출 모두 어려운 상태. 상세페이지·가격 점검 필요.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 물레방아 비유 -->
+    <div class="guide-card">
+      <button class="guide-toggle" onclick="openPanel('gc-waterwheel')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">⚙️</span>
+          <div>
+            <div class="guide-toggle-title">물레방아 비유</div>
+            <div class="guide-toggle-sub">"돌면 잠근다" — 핵심 철학</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-gc-waterwheel">›</span>
+      </button>
+      <div class="guide-body" id="gc-waterwheel">
+        <div style="font-size:12px;color:#333;line-height:1.8;margin-top:4px;">
+          <b style="color:#2a5bd7;">물레방아 = 쿠팡 광고 시스템 / 물 = 광고비</b>
+        </div>
+        <div style="background:#f5f5f7;border-radius:8px;padding:12px 14px;margin-top:10px;font-size:12px;color:#333;line-height:2;">
+          1단계: 어거지로 돌리기 → 판매량 쌓기, 랭킹 올리기<br>
+          2단계: 돌기 시작하면 잠그기 → 1:1 법칙 적용, 최적화<br>
+          3단계: 자연매출이 받쳐주는 안정 구조
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:#555;line-height:1.7;">
+          찔끔찔끔 물을 틀면 → 물레방아가 돌지 않음<br>
+          처음엔 <b>팍! 과감하게</b> 투입 → 궤도 오르면 <b>서서히 잠그기</b><br><br>
+          ⚠️ 초기 효율이 낮은 건 당연함. 끄거나 줄이면 물레방아 자체를 돌릴 수 없음.
+        </div>
+        <div style="margin-top:10px;background:#fef0f0;border-radius:8px;padding:10px 12px;font-size:12px;color:#c0392b;line-height:1.7;">
+          광고비는 상품/판매가/계정/시점마다 다름 → 남의 세팅 복붙 불가. 내 데이터 보면서 직접 조정.
+        </div>
+      </div>
+    </div>
+
+    <!-- 쿠팡 AI 롤링 -->
+    <div class="guide-card">
+      <button class="guide-toggle" onclick="openPanel('gc-ai')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">🤖</span>
+          <div>
+            <div class="guide-toggle-title">쿠팡 AI 롤링 시스템</div>
+            <div class="guide-toggle-sub">왜 광고비 줄였는데 판매가 늘어나나</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-gc-ai">›</span>
+      </button>
+      <div class="guide-body" id="gc-ai">
+        <div style="background:#f5f5f7;border-radius:8px;padding:12px 14px;margin-top:4px;font-size:12px;color:#333;line-height:2;font-family:monospace;">
+          ① 광고비 많이 씀 → AI: "투자 의지 있네, 좋은 자리 줄게"<br>
+          ② 좋은 자리 + 높은 전환율 → AI: "잘 팔리네, 유지할게"<br>
+          ③ 이 시점에서 수도꼭지 잠그면<br>
+             → AI: "효율 좋은 광고네, 오히려 더 밀어줄게"<br>
+          ④ 결과: 돈 덜 쓰면서 클릭 더 많이 받는 구조
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:#555;line-height:1.7;">
+          목표 ROAS 설정값 = 수도꼭지<br>
+          <b>ROAS 낮게</b> → AI가 공격적으로 입찰 (물줄기 열기)<br>
+          <b>ROAS 높게</b> → AI가 보수적으로 입찰 (물줄기 잠그기)
+        </div>
+      </div>
+    </div>
+
+    <!-- 광고비 = 월세 -->
+    <div class="guide-card">
+      <button class="guide-toggle" onclick="openPanel('gc-rent')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">🏠</span>
+          <div>
+            <div class="guide-toggle-title">광고비 = 월세(자릿세)</div>
+            <div class="guide-toggle-sub">광고매출 vs 자연매출 5:5 이상적</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-gc-rent">›</span>
+      </button>
+      <div class="guide-body" id="gc-rent">
+        <div style="font-size:12px;color:#333;line-height:1.8;margin-top:4px;">
+          쿠팡은 광고판매/자연판매 구분 없이 <b>랭킹 가점 동일</b><br>
+          광고 판매량↑ → 랭킹↑ → 자연매출↑
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:#555;line-height:1.7;">
+          이상적 비율: <b>광고 5 : 자연 5</b><br>
+          광고 끊으면: 매출↓ → 랭킹↓ → 자연매출도↓ → 악순환<br><br>
+          ⚠️ <b>단, 판매량이 뒷받침될 때만 월세 개념 성립</b><br>
+          일 2~3개 팔리는데 광고비 10만원 = 월세가 아닌 낭비
+        </div>
+      </div>
+    </div>
+
+    <!-- 데이터 기준 -->
+    <div class="guide-card">
+      <button class="guide-toggle" onclick="openPanel('gc-data')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">📊</span>
+          <div>
+            <div class="guide-toggle-title">의미있는 데이터 기준</div>
+            <div class="guide-toggle-sub">최소 100클릭 이상</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-gc-data">›</span>
+      </button>
+      <div class="guide-body" id="gc-data">
+        <div style="font-size:12px;color:#333;line-height:1.8;margin-top:4px;">
+          클릭수 없으면: 전환율 모름 → CPC 한계가격 모름 → 광고비 조절 불가
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:#555;line-height:1.7;">
+          찔끔 쓰면 클릭 2회 → 전환율 50%처럼 튀어도 노이즈, 판단 불가<br>
+          팍 쓰면 클릭 200회 → 전환율 22%, 신뢰할 수 있는 데이터<br><br>
+          <b>최소 100클릭</b> 이상 쌓인 후 전환율 데이터 신뢰 가능<br>
+          모수가 클수록 정확도↑
+        </div>
+        <div style="margin-top:10px;background:#e8f8f0;border-radius:8px;padding:10px 12px;font-size:12px;color:#2e7d32;line-height:1.7;">
+          초반 광고비 팍 투입 = 물레방아 가동 + <b>데이터 빠르게 사는 것</b> (두 마리 토끼)
+        </div>
+      </div>
+    </div>
+
+    <!-- 전체 전략 큰 틀 -->
+    <div class="guide-card">
+      <button class="guide-toggle" onclick="openPanel('gc-strategy')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">🗺️</span>
+          <div>
+            <div class="guide-toggle-title">전체 전략 큰 틀</div>
+            <div class="guide-toggle-sub">개념을 다 읽은 후 — 전략의 흐름 정리</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-gc-strategy">›</span>
+      </button>
+      <div class="guide-body" id="gc-strategy">
+        <div style="font-size:12px;color:#333;line-height:1.8;margin-top:4px;">
+          <b style="color:#2a5bd7;">전환율이 전략의 출발점</b><br>
+          전환율 높음 = 시장을 부수는 가격으로 진입한 것<br>
+          전환율 낮음 = 제품 문제 또는 가격이 시장파괴 수준이 아닌 것
+        </div>
+        <div style="background:#f5f5f7;border-radius:8px;padding:12px 14px;margin-top:12px;font-size:12px;color:#333;line-height:2;font-family:monospace;">
+          ① 시장파괴 가격으로 진입 (전환율 확보)<br>
+          ② 광고비 팍 틀어서 물레방아 가동 (AI 설득)<br>
+          ③ AI가 좋은 자리 배정하면 수도꼭지 잠그기<br>
+          ④ 광고 효율 좋은 상태로 안정화<br>
+          ⑤ 데이터 분석 (CPC 한계가격, 1:1 법칙 적용)<br>
+          ⑥ 이후 판매가 서서히 올리기
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:#555;line-height:1.7;">
+          <b>불변의 원칙:</b> 판매가가 바뀌고 데이터가 바뀌어도<br>
+          ✔ 전환율로 CPC 한계가격 파악<br>
+          ✔ 1:1 법칙으로 광고비 조절<br>
+          ✔ 물레방아 원리로 타이밍 판단
+        </div>
+      </div>
+    </div>
+
+    <!-- 광고 생성 필수 설정 -->
+    <div class="guide-card">
+      <button class="guide-toggle" onclick="openPanel('gc-setup')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">⚙️</span>
+          <div>
+            <div class="guide-toggle-title">광고 생성 필수 설정</div>
+            <div class="guide-toggle-sub">AI 자동 선택 금지 · 운영방식 자동 선택 필수</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-gc-setup">›</span>
+      </button>
+      <div class="guide-body" id="gc-setup">
+        <div style="font-size:12px;color:#333;line-height:1.9;margin-top:4px;">
+          <b style="color:#2a5bd7;">① 목표 유형</b><br>
+          <b>매출 성장</b> 선택 (인지도 선택 시 CPM 방식 → 비효율)<br><br>
+          <b style="color:#2a5bd7;">② 상품 설정: AI 자동 선택 금지 → 수동 설정 필수</b><br>
+          AI 자동: 안 팔릴 것 같은 상품 자동 제외 → 판매자 의사 무시<br>
+          수동: 모든 옵션 직접 설정, 데이터 기반 판단<br>
+          단, 가격 차이 큰 옵션(20개 1만원 vs 100개 5만원)은 메인 옵션만<br><br>
+          <b style="color:#2a5bd7;">③ 운영 방식: 자동(최적화) 선택 필수</b><br>
+          수동: 고정 CPC → 저녁 입찰 경쟁에서 밀림<br>
+          자동: 쿠팡 AI가 시간대별 최적 CPC 자동 조정
+        </div>
+        <div class="guide-warn">
+          ⚠️ 세 가지 중 하나라도 잘못 선택하면 광고비가 비효율적으로 소진됩니다.
+        </div>
+      </div>
+    </div>
+
+    <!-- 키워드 제외 주의사항 -->
+    <div class="guide-card">
+      <button class="guide-toggle" onclick="openPanel('gc-keyword')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">🔑</span>
+          <div>
+            <div class="guide-toggle-title">키워드 제외 주의사항</div>
+            <div class="guide-toggle-sub">대형 키워드 제외 금지 · 브랜드명만 제외</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-gc-keyword">›</span>
+      </button>
+      <div class="guide-body" id="gc-keyword">
+        <div style="font-size:12px;color:#333;line-height:1.9;margin-top:4px;">
+          <b style="color:#E64040;">대형 키워드(예: "콜라") 절대 제외 금지</b><br>
+          → 제외하면 AI가 세부 키워드 파생 불가 ("맛있는 콜라", "시원한 콜라" 등)<br>
+          → 비효율 키워드가 돈 먹어도 견딜 수 있으면 유지<br><br>
+          브랜드명은 제외 권장 (이미 1위 노출 중이면 광고비 낭비)<br>
+          안 팔리는 키워드 수동 제외는 선택사항 (AI가 자동 학습)
+        </div>
+        <div style="margin-top:10px;background:#e8f8f0;border-radius:8px;padding:10px 12px;font-size:12px;color:#2e7d32;line-height:1.7;">
+          💡 키워드 제외보다 전환율·상세페이지 개선이 효율 개선에 더 효과적.
+        </div>
+      </div>
+    </div>
+
+    <!-- 시간대별 광고비 & 예산 기준 -->
+    <div class="guide-card">
+      <button class="guide-toggle" onclick="openPanel('gc-budget')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">⏰</span>
+          <div>
+            <div class="guide-toggle-title">시간대별 광고비 & 예산 기준</div>
+            <div class="guide-toggle-sub">저녁 6~12시가 하루 판매량 50% 이상</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-gc-budget">›</span>
+      </button>
+      <div class="guide-body" id="gc-budget">
+        <div style="background:#f5f5f7;border-radius:8px;padding:12px 14px;margin-top:4px;font-size:12px;color:#333;line-height:2;">
+          아침 9~10시에 쓴 금액 × 3~4배 = 일일 총 광고비 예측<br>
+          <span style="color:#888;">예: 아침 9시 5만원 → 일일 총 20만원 예상</span><br>
+          저녁 6~12시: 낮 전체 소진액만큼 추가 소진<br>
+          하루 판매량 50% 이상이 저녁 6~12시 발생
+        </div>
+        <div style="margin-top:10px;font-size:12px;font-weight:700;color:#555;margin-bottom:6px;">초기 광고비 기준</div>
+        <div style="background:#f5f5f7;border-radius:8px;padding:12px 14px;font-size:12px;color:#333;line-height:2;">
+          신규 적정: <b style="color:#2a5bd7;">5~10만원/일</b><br>
+          빠른 데이터 원할 때: <b style="color:#2a5bd7;">20~30만원/일</b><br>
+          일일 예산은 설정값의 <b>1.2배까지</b> 탄력 적용
+        </div>
+        <div class="guide-warn">
+          ⚠️ 아침에 예산 다 쓰고 광고 끄면 저녁 판매량 50%를 잃습니다. 낮추더라도 24시간 유지.
+        </div>
+      </div>
+    </div>
+
+    <!-- ROAS 조정 단위 & 캠페인 관리 -->
+    <div class="guide-card">
+      <button class="guide-toggle" onclick="openPanel('gc-manage')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">📝</span>
+          <div>
+            <div class="guide-toggle-title">ROAS 조정 단위 & 캠페인 관리</div>
+            <div class="guide-toggle-sub">최소 10% 단위로 조정 · 이력 캠페인명에 기록</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-gc-manage">›</span>
+      </button>
+      <div class="guide-body" id="gc-manage">
+        <div style="font-size:12px;font-weight:700;color:#555;margin-top:4px;margin-bottom:6px;">ROAS 조정 단위</div>
+        <div style="background:#f5f5f7;border-radius:8px;padding:12px 14px;font-size:12px;color:#333;line-height:2;">
+          세팅값 2000% → 최소 <b style="color:#2a5bd7;">200씩</b> 조정 (10%)<br>
+          세팅값 1000% → 최소 <b style="color:#2a5bd7;">100씩</b> 조정 (10%)<br>
+          10% 미만 조정은 체감 효과 없음
+        </div>
+        <div style="font-size:12px;font-weight:700;color:#555;margin-top:12px;margin-bottom:6px;">캠페인명 이력 관리</div>
+        <div style="background:#f5f5f7;border-radius:8px;padding:12px 14px;font-size:12px;color:#333;line-height:2;font-family:monospace;">
+          생성 시: 상품명 | 09-01 | 2000%<br>
+          변경 시: 상품명 | 09-01 | 2000% → 09-05 → 1500%
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:#888;">이유: 데이터 변화 원인 추적</div>
+      </div>
+    </div>
+
+    <!-- 실전 사례 -->
+    <div class="guide-card">
+      <button class="guide-toggle" onclick="openPanel('gc-case')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">🏆</span>
+          <div>
+            <div class="guide-toggle-title">실전 사례</div>
+            <div class="guide-toggle-sub">7,900원 진입 → 12,500원 인상 · 1달 이내</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-gc-case">›</span>
+      </button>
+      <div class="guide-body" id="gc-case">
+        <div style="font-size:12px;color:#555;line-height:1.8;margin-top:4px;">
+          시장가 1만원 초중반 / 진입가 <b>7,900원</b> (개당 100~200원 손해) / 원가 3,600원
+        </div>
+        <div style="background:#f5f5f7;border-radius:8px;padding:12px 14px;margin-top:10px;font-size:12px;color:#333;line-height:1.9;">
+          <b>물레방아 실전 데이터:</b><br>
+          7.29 &nbsp;광고비 20만원 → 판매 48개 (CPC ~1,000원)<br>
+          7.30 &nbsp;광고비 10만원 → 판매 56개 (CPC ~500원)<br>
+          8.01 &nbsp;광고비  7만원 → 판매 63개 (CPC ~300원)<br><br>
+          광고비 줄였는데 판매 오히려 증가 ✅
+        </div>
+        <div style="background:#f5f5f7;border-radius:8px;padding:12px 14px;margin-top:8px;font-size:12px;color:#333;line-height:2;font-family:monospace;">
+          7,900원 손해 진입<br>
+          → 전환율 25% + 광고 팍 → 물레방아 가동<br>
+          → 3천개 판매량 → 랭킹 확보<br>
+          → 자연판매 70개+/일 구조 완성<br>
+          → 판매가 12,500원 인상<br>
+          → 광고+자연 100개+/일, 개당 순익 4,500원
+        </div>
+        <div style="margin-top:10px;background:#e8f8f0;border-radius:8px;padding:10px 12px;font-size:12px;color:#2e7d32;font-weight:700;">
+          소요 기간: 1달도 안 걸림<br>
+          초기 광고비 100만원 이하 = 투자비로 간주 → 랭킹/구조 매입
+        </div>
+      </div>
+    </div>
+
+      </div>
+    </div><!-- /guide-split-left -->
+    <div class="guide-split-right" id="guide-split-right">
+      <div class="guide-split-right-empty" id="guide-right-empty">
+        <div style="font-size:36px;">👈</div>
+        <div>항목을 선택하면 내용이 여기에 펼쳐집니다</div>
+      </div>
+      <div class="guide-detail-header" id="guide-detail-header" style="display:none;">
+        <span class="guide-detail-icon" id="guide-detail-icon"></span>
+        <span class="guide-detail-title" id="guide-detail-title"></span>
+        <button class="guide-detail-close" onclick="closeGuidePanel('guide')">✕</button>
+      </div>
+      <div class="guide-detail-body" id="guide-detail-body"></div>
+    </div><!-- /guide-split-right -->
+  </div><!-- /guide-split -->
+</div>
+
+<!-- TAB 1: 최소 ROAS -->
+<div id="tab-roas" class="tab-panel">
+  <div class="content">
+
+    <div class="guide-card">
+      <button class="guide-toggle" onclick="toggleGuide('guide-roas')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">📖</span>
+          <div>
+            <div class="guide-toggle-title">언제, 어떻게 쓰나요?</div>
+            <div class="guide-toggle-sub">사용 가이드 보기</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-guide-roas">▼</span>
+      </button>
+      <div class="guide-body" id="guide-roas">
+        <div class="guide-step">
+          <div class="guide-step-num">1</div>
+          <div class="guide-step-text">
+            <b>언제 쓰나요?</b><br>
+            신규 상품 광고를 처음 세팅할 때, 또는 쿠팡 광고 관리자에서 목표 수익률을 입력하기 전에 사용.
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="guide-step-num">2</div>
+          <div class="guide-step-text">
+            <b>정상가</b> — 할인쿠폰 적용 전 가격을 입력.<br>
+            <span class="eg">예: 쿠폰 달기 전 노출 가격 20,000원</span><br>
+            쿠팡 광고는 이 가격 기준으로 수익률을 집계함.
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="guide-step-num">3</div>
+          <div class="guide-step-text">
+            <b>실제 판매가</b> — 쿠폰 적용 후 실제 팔리는 가격.<br>
+            <span class="eg">예: 쿠폰 10,000원 할인 → 10,000원</span>
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="guide-step-num">4</div>
+          <div class="guide-step-text">
+            <b>개당 이익금</b> — 실제 판매가에서 원가·수수료 등 빼고 남는 금액.<br>
+            <span class="eg">예: 판매가 10,000원 - 원가 5,000원 - 수수료 2,000원 = 3,000원</span>
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="guide-step-num">5</div>
+          <div class="guide-step-text">
+            <b>결과 활용</b> — 계산된 <b>초기 셋팅 ROAS</b>를 쿠팡 광고관리자 → 목표 수익률에 입력.<br>
+            쿠팡 AI가 그 수익률에 맞게 CPC를 자동으로 조정함.
+          </div>
+        </div>
+        <div class="guide-warn">
+          ⚠️ 쿠팡은 실제 판매가가 아닌 <b>정상가(쿠폰 전 가격)</b> 기준으로 광고 수익률을 집계함.<br>
+          정상가를 넣지 않으면 실제보다 수익률이 높게 보여 광고비가 과다 지출될 수 있음.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">최소 ROAS 계산기 (목표 광고수익률)</div>
+      <div class="card-desc">이 이하로 ROAS를 설정하면 광고할수록 손해.<br>초기 셋팅은 최소 ROAS × 1.5배로 시작.</div>
+
+      <div class="formula-box">최소 ROAS = 정상가 / 이익금 × 110<br>초기 셋팅 = 최소 ROAS × 1.5배</div>
+
+      <div class="field">
+        <label>정상가 (할인쿠폰 전 가격)</label>
+        <div class="input-wrap">
+          <input type="number" id="roas-normal-price" placeholder="예: 20000">
+          <span class="input-unit">원</span>
+        </div>
+        <div class="field-note">쿠팡 광고는 정상가 기준으로 집계됨</div>
+      </div>
+
+      <div class="field">
+        <label>실제 판매가 (할인쿠폰 적용 후)</label>
+        <div class="input-wrap">
+          <input type="number" id="roas-sale-price" placeholder="예: 10000">
+          <span class="input-unit">원</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>개당 이익금 (실제 판매가 기준)</label>
+        <div class="input-wrap">
+          <input type="number" id="roas-profit" placeholder="예: 3000">
+          <span class="input-unit">원</span>
+        </div>
+        <div class="field-note">판매가 - 원가 - 수수료 등 실제 남는 금액</div>
+      </div>
+
+      <button class="calc-btn" onclick="calcROAS()">계산하기</button>
+
+      <div class="result-box" id="roas-result">
+        <div class="result-header">계산 결과</div>
+        <div class="result-row">
+          <span class="result-label">최소 ROAS (본전)</span>
+          <span class="result-value highlight" id="roas-min">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">초기 셋팅 ROAS (×1.5)</span>
+          <span class="result-value highlight" id="roas-init">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">광고 세팅에 입력할 값</span>
+          <span class="result-value" id="roas-input-val" style="font-size:13px;color:#888;">—</span>
+        </div>
+      </div>
+
+      <div class="tip-box" id="roas-tip" style="display:none">
+        실제로 <b id="tip-sale">1만원</b>에 팔더라도, ROAS 계산엔 <b id="tip-normal">2만원(정상가)</b>를 기준으로 한 <b id="tip-init">—</b>를 광고 세팅에 입력해야 손해를 보지 않음.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: CPC 한계가격 -->
+<div id="tab-cpc" class="tab-panel">
+  <div class="content">
+
+    <div class="guide-card">
+      <button class="guide-toggle" onclick="toggleGuide('guide-cpc')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">📖</span>
+          <div>
+            <div class="guide-toggle-title">언제, 어떻게 쓰나요?</div>
+            <div class="guide-toggle-sub">사용 가이드 보기</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-guide-cpc">▼</span>
+      </button>
+      <div class="guide-body" id="guide-cpc">
+        <div class="guide-step">
+          <div class="guide-step-num">1</div>
+          <div class="guide-step-text">
+            <b>언제 쓰나요?</b><br>
+            광고를 어느 정도 돌린 후 클릭 데이터가 쌓였을 때 사용. 최소 <b>100클릭 이상</b> 쌓인 후 계산해야 신뢰도가 있음.
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="guide-step-num">2</div>
+          <div class="guide-step-text">
+            <b>전환율 확인 방법</b><br>
+            쿠팡 광고관리자 → 광고 성과 데이터에서 클릭수 · 주문수 확인.<br>
+            <span class="eg">전환율 = 주문수 / 클릭수 × 100</span>
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="guide-step-num">3</div>
+          <div class="guide-step-text">
+            <b>결과 활용</b><br>
+            현재 평균 CPC가 계산된 한계가격보다 높다 → 광고비 낮추기.<br>
+            낮다 → 1대1 법칙 탭에서 증액 여부 판단.
+          </div>
+        </div>
+        <div class="guide-warn">
+          ⚠️ 전환율은 상품 상세페이지 품질과 직결됨. 전환율이 오를수록 허용 CPC도 올라가므로, 상세페이지 개선이 광고 효율 개선의 핵심.
+        </div>
+        <div style="margin-top:10px;background:#f0f6ff;border-radius:8px;padding:10px 12px;font-size:12px;color:#2a5bd7;line-height:1.9;">
+          <b>카테고리별 목표 전환율 기준:</b><br>
+          만원대 저가: <b>15~20%</b><br>
+          2만원대 중가: <b>8~12%</b><br>
+          고가 (가구 등): <b>5~10%</b><br>
+          <span style="font-size:11px;color:#888;">전환율 5% 미만 → 상세페이지·가격 점검 필요</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">CPC 한계가격 계산기</div>
+      <div class="card-desc">이 CPC를 초과하면 클릭당 손해.<br>전환율을 알아야 정확한 한계가격 계산 가능.</div>
+
+      <div class="formula-box">최대 CPC = 1개 판매 수익 × 전환율</div>
+
+      <div class="field">
+        <label>1개 판매 수익</label>
+        <div class="input-wrap">
+          <input type="number" id="cpc-profit" placeholder="예: 5000">
+          <span class="input-unit">원</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>전환율</label>
+        <div class="input-wrap">
+          <input type="number" id="cpc-cvr" placeholder="예: 10" step="0.1">
+          <span class="input-unit">%</span>
+        </div>
+        <div class="field-note">최소 100클릭 이상 데이터에서 측정 권장</div>
+      </div>
+
+      <button class="calc-btn" onclick="calcCPC()">계산하기</button>
+
+      <div class="result-box" id="cpc-result">
+        <div class="result-header">계산 결과</div>
+        <div class="result-row">
+          <span class="result-label">최대 허용 CPC</span>
+          <span class="result-value highlight" id="cpc-max">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">이 이상 입찰 시</span>
+          <span class="result-value red">클릭당 손해</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">이 이하 입찰 시</span>
+          <span class="result-value green">클릭당 수익</span>
+        </div>
+      </div>
+
+      <div class="tip-box" id="cpc-tip" style="display:none">
+        전환율이 올라갈수록 허용 CPC도 올라감.<br>
+        상세페이지 개선 → 전환율↑ → CPC 한계가격↑ → 더 좋은 자리 입찰 가능.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: 1대1 법칙 -->
+<div id="tab-ratio" class="tab-panel">
+  <div class="content">
+
+    <div class="guide-card">
+      <button class="guide-toggle" onclick="toggleGuide('guide-ratio')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">📖</span>
+          <div>
+            <div class="guide-toggle-title">언제, 어떻게 쓰나요?</div>
+            <div class="guide-toggle-sub">사용 가이드 보기</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-guide-ratio">▼</span>
+      </button>
+      <div class="guide-body" id="guide-ratio">
+        <div class="guide-step">
+          <div class="guide-step-num">1</div>
+          <div class="guide-step-text">
+            <b>언제 쓰나요?</b><br>
+            광고를 운영 중일 때 주기적으로 (주 1회 이상) 광고 건강도를 체크할 때 사용.
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="guide-step-num">2</div>
+          <div class="guide-step-text">
+            <b>광고비</b> — 해당 기간 총 광고비 지출.<br>
+            <span class="eg">예: 이번 주 광고비 합산 100,000원</span>
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="guide-step-num">3</div>
+          <div class="guide-step-text">
+            <b>광고전환매출 이익금</b> — 광고로 팔린 상품들의 마진 합산.<br>
+            <span class="eg">예: 광고 전환 판매 50개 × 개당 마진 5,000원 = 250,000원</span>
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="guide-step-num">4</div>
+          <div class="guide-step-text">
+            <b>결과 해석</b><br>
+            순이익 ≈ 광고비 → 최적 (1:1 달성)<br>
+            순이익 &gt; 광고비 → 여유, 증액 검토<br>
+            순이익 &lt; 광고비 → 과투자, 절감 필요
+          </div>
+        </div>
+        <div class="guide-warn">
+          ⚠️ 자연매출 이익금은 포함하지 않음. 오직 <b>광고를 통해 전환된 매출의 마진만</b> 입력해야 정확한 판단이 가능.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">광고 1대1 법칙 체크</div>
+      <div class="card-desc">광고전환매출 순이익금과 광고비를 비교해<br>지금 광고가 돈을 먹는지 버는지 판단.</div>
+
+      <div class="formula-box">순이익금 = 광고전환매출이익금(마진) - 광고비<br>목표: 순이익금 ≈ 광고비 (1:1)</div>
+
+      <div class="field">
+        <label>광고비 (기간 합산)</label>
+        <div class="input-wrap">
+          <input type="number" id="ratio-adcost" placeholder="예: 100000">
+          <span class="input-unit">원</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>광고전환매출 이익금 (마진)</label>
+        <div class="input-wrap">
+          <input type="number" id="ratio-margin" placeholder="예: 260000">
+          <span class="input-unit">원</span>
+        </div>
+        <div class="field-note">광고로 팔린 것들의 마진 합산</div>
+      </div>
+
+      <button class="calc-btn" onclick="calcRatio()">계산하기</button>
+
+      <div class="result-box" id="ratio-result">
+        <div class="result-header">계산 결과</div>
+        <div class="result-row">
+          <span class="result-label">광고전환매출 순이익금</span>
+          <span class="result-value" id="ratio-net">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">순이익 / 광고비 비율</span>
+          <span class="result-value" id="ratio-rate">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">상태</span>
+          <span class="result-value" id="ratio-status">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">권장 액션</span>
+          <span class="result-value" id="ratio-action" style="font-size:13px;">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 4: ROAS 조정 -->
+<div id="tab-adjust" class="tab-panel">
+  <div class="content">
+
+    <div class="card">
+      <div class="card-title">ROAS 조정 계산기</div>
+      <div class="card-desc">현재 ROAS에서 10% 단위 조정값을 계산합니다.</div>
+
+      <div class="field">
+        <label>현재 목표 ROAS (%)</label>
+        <div class="input-wrap">
+          <input type="number" id="adjust-roas" placeholder="예: 2000">
+          <span class="input-unit">%</span>
+        </div>
+      </div>
+
+      <button class="calc-btn" onclick="calcAdjust()">계산하기</button>
+
+      <div class="result-box" id="adjust-result">
+        <div class="result-header">조정 결과</div>
+        <div class="result-row">
+          <span class="result-label" style="color:#E64040;font-weight:600;">10% 낮추기 (공격적)</span>
+          <span class="result-value red" id="adjust-down10">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label" style="color:#e67e22;font-weight:600;">5% 낮추기</span>
+          <span class="result-value orange" id="adjust-down5">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label" style="font-weight:700;">현재값 유지</span>
+          <span class="result-value" id="adjust-current">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label" style="color:#2a5bd7;font-weight:600;">5% 높이기</span>
+          <span class="result-value" id="adjust-up5" style="color:#2a5bd7;font-weight:700;">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label" style="color:#2a5bd7;font-weight:600;">10% 높이기 (보수적)</span>
+          <span class="result-value" id="adjust-up10" style="color:#2a5bd7;font-weight:700;">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label" style="color:#2a5bd7;font-weight:600;">20% 높이기</span>
+          <span class="result-value" id="adjust-up20" style="color:#2a5bd7;font-weight:700;">—</span>
+        </div>
+      </div>
+
+      <div class="tip-box" id="adjust-tip" style="display:none;">
+        낮출수록 공격적(광고비↑), 높일수록 보수적(광고비↓). 최소 10% 단위로 조정해야 효과 체감.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TAB 5: 알고리즘 & 팁 -->
+<div id="tab-algo" class="tab-panel">
+  <div class="guide-split">
+    <div class="guide-split-left" id="algo-split-left">
+      <div class="guide-split-left-inner">
+
+    <!-- 쿠팡 알고리즘 수익 구조 -->
+    <div class="guide-card" style="border-radius:14px;overflow:hidden;">
+      <button class="guide-toggle" onclick="openPanel('algo-revenue')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">🏦</span>
+          <div>
+            <div class="guide-toggle-title">쿠팡 알고리즘이 추종하는 것</div>
+            <div class="guide-toggle-sub">CPC 수수료 + 판매 수수료 — 2가지 수익원</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-algo-revenue">›</span>
+      </button>
+      <div class="guide-body" id="algo-revenue">
+        <div style="font-size:12px;color:#333;line-height:1.9;margin-top:4px;">
+          쿠팡은 광고에서 두 가지 방식으로 수익을 얻는다.
+        </div>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px;">
+          <div style="background:#f0f6ff;border-radius:8px;padding:10px 12px;font-size:12px;color:#2a5bd7;line-height:1.8;">
+            <b>① CPC 광고 수수료</b><br>
+            클릭이 발생할 때마다 판매자가 쿠팡에 지불.<br>
+            → CTR(클릭률)이 높은 상품일수록 수익 극대화
+          </div>
+          <div style="background:#f0f6ff;border-radius:8px;padding:10px 12px;font-size:12px;color:#2a5bd7;line-height:1.8;">
+            <b>② 판매 수수료</b><br>
+            구매 완료 시 거래액의 약 10% 쿠팡 수취.<br>
+            → CVR(전환율)이 높은 상품일수록 수익 극대화
+          </div>
+        </div>
+        <div style="margin-top:12px;background:#fef0f0;border-radius:8px;padding:10px 12px;font-size:12px;color:#E64040;line-height:1.8;">
+          ✅ <b>CTR 높은 상품 + CVR 높은 상품 = 쿠팡이 가장 밀어주는 상품</b><br>
+          알고리즘은 이 두 수치를 동시에 극대화하는 상품을 자동으로 선별해 좋은 자리를 배정한다.
+        </div>
+        <div style="margin-top:10px;background:#f5f5f7;border-radius:8px;padding:10px 12px;font-size:11px;color:#555;line-height:1.9;">
+          🤖 쿠팡 AI의 생각:<br>
+          <i>"이 상품은 전환율이 높구나.<br>
+          그렇다면 노출을 시켜줄수록 잘 팔리겠네?<br>
+          같은 구좌·같은 클릭률인 다른 제품보다 전환율이 높으니<br>
+          판매 수수료를 더 챙길 수 있겠군! 좋은 자리를 배정해줘야겠어!"</i>
+        </div>
+      </div>
+    </div>
+
+    <!-- 알고리즘의 최적화 사고 흐름 -->
+    <div class="guide-card" style="border-radius:14px;overflow:hidden;">
+      <button class="guide-toggle" onclick="openPanel('algo-thinking')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">🤖</span>
+          <div>
+            <div class="guide-toggle-title">알고리즘의 최적화 사고 흐름</div>
+            <div class="guide-toggle-sub">입찰단가 → CTR → CVR → 상품성까지</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-algo-thinking">›</span>
+      </button>
+      <div class="guide-body" id="algo-thinking">
+        <div style="font-size:11px;color:#555;line-height:1.5;margin-top:4px;margin-bottom:10px;">
+          쿠팡 AI는 광고 구좌에 어떤 상품을 앉힐지 아래 순서로 판단한다.
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:11px;">
+
+          <div style="background:#f0f6ff;border-radius:8px;padding:10px 12px;color:#2a5bd7;line-height:1.8;">
+            <b>① 일단 제일 비싸게 부르는 놈 앉혀보자</b><br>
+            <span style="color:#555;">입찰단가(CPC)가 높은 광고주 우선 배정 → 클릭 한 번에 더 많은 광고비 수익</span>
+          </div>
+
+          <div style="background:#fff8e6;border-radius:8px;padding:10px 12px;color:#a07800;line-height:1.8;">
+            <b>② 근데 클릭을 못 받네? ㄷㄷ</b><br>
+            <span style="color:#555;">노출량을 늘려줘도 클릭이 안 들어옴.<br>
+            근데 보니까 — 같은 노출량이라도 누구는 클릭을 잘 받잖아?<br>
+            CPC 높게 부른 놈보다, CPC 좀 낮아도 클릭률 높은 녀석이<br>
+            <b style="color:#a07800;">총 클릭 수입이 더 짭잘하네.</b></span>
+          </div>
+
+          <div style="background:#f0f6ff;border-radius:8px;padding:10px 12px;color:#2a5bd7;line-height:1.8;">
+            <b>③ 클릭률 높은 애로 새로 앉혀보자!</b><br>
+            <span style="color:#555;">단가 × 클릭수 = 실수익. 클릭률이 높은 상품이 총 광고 수입을 극대화.</span>
+          </div>
+
+          <div style="background:#fff8e6;border-radius:8px;padding:10px 12px;color:#a07800;line-height:1.8;">
+            <b>④ 클릭은 많이 받는데... 전환수수료를 더 챙길 수 있었잖아!</b><br>
+            <span style="color:#555;">클릭이 구매로 이어져야 판매 수수료까지 추가 수익. CTR만으로는 부족</span>
+          </div>
+
+          <div style="background:#f0f6ff;border-radius:8px;padding:10px 12px;color:#2a5bd7;line-height:1.8;">
+            <b>⑤ 비싸게 파는 놈 누구야? (판매가 높은 상품 탐색)</b><br>
+            <span style="color:#555;">판매 수수료는 거래액 비례 → 단가 높은 상품이 수수료도 크다</span>
+          </div>
+
+          <div style="background:#fff8e6;border-radius:8px;padding:10px 12px;color:#a07800;line-height:1.8;">
+            <b>⑥ 비싸게 팔긴 하는데 CTR이 또 문제네</b><br>
+            <span style="color:#555;">가격이 높으면 클릭률이 낮아질 수 있음. 단가 × CTR × CVR 밸런스가 핵심</span>
+          </div>
+
+          <div style="background:#f0f6ff;border-radius:8px;padding:10px 12px;color:#2a5bd7;line-height:1.8;">
+            <b>⑦ 전환율 높은 놈은 누군데? 최적의 밸런스를 찾자!</b><br>
+            <span style="color:#555;">입찰단가 × CTR × CVR × 판매가 — 이 4가지를 종합한 기대수익이 가장 높은 상품 선정</span>
+          </div>
+
+          <div style="background:#ffeaea;border-radius:8px;padding:10px 12px;color:#c0392b;line-height:1.8;">
+            <b>⑧ 아 근데 팔면 뭐해? 반품률·클레임이 너무 많네</b><br>
+            <span style="color:#555;">반품·클레임이 많으면 쿠팡 플랫폼 신뢰도 하락 → 장기적으로 쿠팡 자체에 손해.<br>이건 단기 수수료와 차원이 다른 문제 — <b>상품성</b>이 받쳐줘야 한다.</span>
+          </div>
+
+        </div>
+
+        <div style="margin-top:12px;background:#1d1d1f;border-radius:8px;padding:12px 14px;font-size:11px;color:#f5f5f7;line-height:1.9;">
+          <b style="color:#E64040;">결론: 알고리즘이 찾는 최적 상품</b><br>
+          입찰단가 ✕ CTR(클릭률) ✕ CVR(전환율) ✕ 판매가 = <b>기대 수익 최대</b><br>
+          + 반품률·클레임 낮음 = <b>플랫폼 신뢰도 유지</b><br>
+          <span style="color:#aaa;">→ 이 조건을 모두 충족하는 상품이 알고리즘의 최우선 노출 대상</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 쿠팡 상품 품질 지표 -->
+    <div class="guide-card" style="border-radius:14px;overflow:hidden;">
+      <button class="guide-toggle" onclick="openPanel('algo-quality')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">🚫</span>
+          <div>
+            <div class="guide-toggle-title">쿠팡이 보는 상품 품질 지표</div>
+            <div class="guide-toggle-sub">"쓰레기 상품" 걸러내는 4가지 기준</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-algo-quality">›</span>
+      </button>
+      <div class="guide-body" id="algo-quality">
+        <div style="font-size:12px;color:#555;line-height:1.7;margin-top:4px;margin-bottom:10px;">
+          아무리 입찰단가·빈도수·전환율이 좋아도 아래 지표가 나쁘면 알고리즘이 노출을 줄인다.<br>
+          단기 수수료보다 플랫폼 신뢰도가 장기적으로 더 중요하기 때문.
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="background:#ffeaea;border-radius:8px;padding:11px 13px;font-size:12px;line-height:1.8;">
+            <b style="color:#c0392b;">① 반품률</b><br>
+            <span style="color:#555;">구매 후 반품 비율. 높을수록 상품이 설명과 다르다는 신호. 알고리즘이 노출 축소.</span>
+          </div>
+          <div style="background:#ffeaea;border-radius:8px;padding:11px 13px;font-size:12px;line-height:1.8;">
+            <b style="color:#c0392b;">② CS 불만 (고객 클레임)</b><br>
+            <span style="color:#555;">1:1 문의·불만 접수 빈도. 불만이 많은 상품은 쿠팡 고객센터 부담 증가 → 패널티.</span>
+          </div>
+          <div style="background:#ffeaea;border-radius:8px;padding:11px 13px;font-size:12px;line-height:1.8;">
+            <b style="color:#c0392b;">③ 배송 지연</b><br>
+            <span style="color:#555;">출고 지연·배송 누락. 쿠팡 로켓배송 기준에서 벗어나면 노출 우선순위 하락.</span>
+          </div>
+          <div style="background:#ffeaea;border-radius:8px;padding:11px 13px;font-size:12px;line-height:1.8;">
+            <b style="color:#c0392b;">④ 허위 스펙</b><br>
+            <span style="color:#555;">상품 정보와 실제 불일치. 리뷰에 "설명과 다름" 반복되면 검색 노출 자체가 막힐 수 있음.</span>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;background:#1d1d1f;border-radius:8px;padding:12px 14px;font-size:11px;color:#f5f5f7;line-height:1.9;">
+          <b style="color:#E64040;">핵심:</b> 광고는 좋은 상품을 더 빠르게 팔아주는 도구.<br>
+          상품성이 받쳐주지 않으면 광고비는 쿠팡 배만 불려주고 끝난다.<br>
+          <span style="color:#aaa;">알고리즘은 결국 "쿠팡 플랫폼에 좋은 상품"을 찾는 녀석이다.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 쿠팡 광고 랭킹 분석기 -->
+    <div class="guide-card" style="border-radius:14px;overflow:hidden;">
+      <button class="guide-toggle" onclick="openPanel('algo-ranker')">
+        <div class="guide-toggle-left">
+          <span class="guide-icon">🏆</span>
+          <div>
+            <div class="guide-toggle-title">쿠팡 광고 랭킹 분석기</div>
+            <div class="guide-toggle-sub">업체별 항목 입력 → 상대적 순위 예측</div>
+          </div>
+        </div>
+        <span class="guide-chevron" id="chevron-algo-ranker">›</span>
+      </button>
+      <div class="guide-body" id="algo-ranker">
+
+        <div style="font-size:11px;color:#555;line-height:1.6;margin-top:4px;margin-bottom:12px;">
+          정확한 수치보다 <b>상대적 비교</b>가 목적. 같은 카테고리 경쟁사끼리 입력해 누가 알고리즘에게 유리한지 예측.
+        </div>
+
+        <!-- 업체 입력 행들 -->
+        <div id="ranker-rows"></div>
+
+        <button onclick="addRankerRow()" style="width:100%;padding:9px;border:1.5px dashed #ccc;background:none;border-radius:8px;font-size:12px;color:#888;cursor:pointer;margin-bottom:12px;">
+          + 업체 추가 (최대 5개)
+        </button>
+
+        <button onclick="calcRanking()" style="width:100%;padding:11px;background:#1d1d1f;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">
+          🏆 랭킹 분석
+        </button>
+
+        <!-- 결과 -->
+        <div id="ranker-result" style="display:none;margin-top:16px;">
+
+          <div style="font-size:12px;font-weight:700;color:#1d1d1f;margin-bottom:10px;">항목별 순위</div>
+          <div id="ranker-metric-rows" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;"></div>
+
+          <div style="font-size:12px;font-weight:700;color:#1d1d1f;margin-bottom:10px;">
+            종합 예상 순위
+            <span style="font-size:10px;font-weight:400;color:#aaa;margin-left:6px;">기대수익 지수 = 클릭률 × (CPC + 판매가×10%×전환율) × 품질보정</span>
+          </div>
+          <div id="ranker-total-rows" style="display:flex;flex-direction:column;gap:6px;"></div>
+
+        </div>
+      </div>
+    </div>
+
+      </div>
+    </div><!-- /algo-split-left -->
+    <div class="guide-split-right" id="algo-split-right">
+      <div class="guide-split-right-empty" id="algo-right-empty">
+        <div style="font-size:36px;">👈</div>
+        <div>항목을 선택하면 내용이 여기에 펼쳐집니다</div>
+      </div>
+      <div class="guide-detail-header" id="algo-detail-header" style="display:none;">
+        <span class="guide-detail-icon" id="algo-detail-icon"></span>
+        <span class="guide-detail-title" id="algo-detail-title"></span>
+        <button class="guide-detail-close" onclick="closeGuidePanel('algo')">✕</button>
+      </div>
+      <div class="guide-detail-body" id="algo-detail-body"></div>
+    </div><!-- /algo-split-right -->
+  </div><!-- /guide-split -->
+</div>
+
+<script>
+  // 홈 탭 상황별 데이터
+  const situations = {
+    new: {
+      label: '🆕 처음 세팅하려고 해요',
+      steps: [
+        { title: '광고 개념과 철학 먼저 읽기', desc: '1억맵 강의 핵심 개념을 숙지해야 계산기 숫자의 맥락이 잡힙니다.', tab: 'guide', tabLabel: '📖 개념 & 철학' },
+        { title: '최소 ROAS 계산', desc: '정상가, 실제 판매가, 이익금을 입력해 광고 세팅에 넣을 목표 수익률을 계산하세요.', tab: 'roas', tabLabel: '최소 ROAS 탭' },
+        { title: '쿠팡 광고관리자에 입력', desc: '계산된 초기 셋팅 ROAS(최소×1.5배)를 목표 광고수익률에 입력 후 광고 시작.', tab: null },
+        { title: '100클릭 쌓일 때까지 유지', desc: '초반 효율이 낮아 보여도 끄거나 줄이지 말 것. 물레방아를 돌리는 단계입니다.', tab: null },
+      ],
+      warn: '⚠️ 광고비를 찔끔 쓰면 물레방아가 돌지 않습니다. 처음엔 과감하게 투입.',
+      tip: null,
+    },
+    early: {
+      label: '🚀 세팅 후 초반 투자 중이에요',
+      steps: [
+        { title: '물레방아 원리 확인', desc: '초기 효율이 낮은 건 정상. 지금 단계는 AI를 설득하고 랭킹을 사는 과정입니다.', tab: 'guide', tabLabel: '📖 물레방아 섹션' },
+        { title: '100클릭 이상 확보했는지 확인', desc: '100클릭 미만이면 아직 판단 불가. 데이터가 쌓일 때까지 유지. 광고가 아예 안 돌고 있다면 → "광고가 안 돌아요" 항목 참고.', tab: null },
+        { title: '전환율 확인 후 CPC 한계가격 계산', desc: '100클릭 이상 쌓이면 전환율을 CPC 탭에 입력해 내 한계가격을 파악하세요.', tab: 'cpc', tabLabel: 'CPC 한계가격 탭' },
+        { title: '판매가 늘면 수도꼭지 잠그기', desc: '광고비 줄여도 판매가 유지되면 물레방아가 돌기 시작한 것. ROAS를 높여 광고비 절감.', tab: null },
+      ],
+      warn: null,
+      tip: '✅ 지금 손해가 나도 랭킹/구조를 매입하는 투자 단계. 초기 100만원 이하는 투자비로 간주.',
+    },
+    optimize: {
+      label: '📊 최적화 단계예요',
+      steps: [
+        { title: '전환율로 CPC 한계가격 역산', desc: '현재 전환율과 개당 수익을 입력해 내 최대 허용 CPC를 파악하세요.', tab: 'cpc', tabLabel: 'CPC 한계가격 탭' },
+        { title: '1대1 법칙으로 광고 건강도 체크', desc: '광고비 vs 광고전환 순이익을 비교해 과투자/여유 상태를 확인.', tab: 'ratio', tabLabel: '1대1 법칙 탭' },
+        { title: '최소 ROAS 재계산', desc: '현재 이익금 기준으로 최소 ROAS를 다시 계산해 목표 수익률 조정.', tab: 'roas', tabLabel: '최소 ROAS 탭' },
+        { title: 'ROAS 조정 — 수도꼭지 조절', desc: '순이익 > 광고비면 ROAS 낮추기(공격적). 순이익 < 광고비면 ROAS 높이기(보수적).', tab: null },
+      ],
+      warn: null,
+      tip: '✅ 광고비 증액 시 절대 순이익 금액이 늘어나는 방향으로만 올릴 것.',
+    },
+    lowstock: {
+      label: '📦 재고 부족 — 광고비 줄여야 해요',
+      steps: [
+        { title: '1대1 법칙으로 현재 상태 확인', desc: '지금 광고가 이익인지 손해인지부터 파악하세요.', tab: 'ratio', tabLabel: '1대1 법칙 탭' },
+        { title: 'ROAS 높여서 광고비 줄이기', desc: '목표 ROAS를 높이면 AI가 CPC를 낮게 입찰 → 광고비 자연스럽게 감소.', tab: 'roas', tabLabel: '최소 ROAS 탭' },
+        { title: '최소 ROAS 이하로는 내리지 말 것', desc: '광고를 완전히 끄면 랭킹이 떨어집니다. 최소 ROAS 위에서 조절.', tab: null },
+        { title: '재고 보충 후 다시 ROAS 낮추기', desc: '재고 확보되면 ROAS를 다시 낮춰 공격적으로 전환. 물레방아를 다시 돌릴 것.', tab: null },
+      ],
+      warn: '⚠️ 광고를 완전히 끄면 매출↓ → 랭킹↓ → 자연매출도↓ → 악순환. 줄이되 끄지 말 것.',
+      tip: null,
+    },
+    weird: {
+      label: '❓ 수익률이 이상한 것 같아요',
+      steps: [
+        { title: '정상가 vs 실제판매가 확인', desc: '쿠팡 광고는 할인쿠폰 전 정상가 기준으로 수익률을 집계합니다. 광고 현황판의 높은 수익률은 정상가 기준이므로 실제와 다를 수 있음.', tab: 'roas', tabLabel: '최소 ROAS 탭' },
+        { title: '최소 ROAS 재계산', desc: '정상가를 분자에 넣어 실제 최소 ROAS를 계산하고, 현재 설정값과 비교하세요.', tab: 'roas', tabLabel: '최소 ROAS 탭' },
+        { title: '1대1 법칙으로 실제 순이익 체크', desc: '광고 현황판 수익률이 아닌, 실제 광고비 vs 마진 순이익으로 판단.', tab: 'ratio', tabLabel: '1대1 법칙 탭' },
+        { title: '전환율 기준 확인', desc: '내 카테고리 기준 전환율이 정상 범위인지 확인. 저가 15~20%, 중가 8~12%, 고가 5~10%.', tab: 'cpc', tabLabel: 'CPC 한계가격 탭' },
+      ],
+      warn: '⚠️ 광고 현황판의 수익률이 2,000~3,000%로 높게 보이면 정상가(쿠폰 전) 기준으로 집계되는 것. 착각하지 말 것.',
+      tip: null,
+    },
+    nodisplay: {
+      label: '🚫 광고가 안 돌아요',
+      steps: [
+        { title: 'ROAS 설정값 확인', desc: 'ROAS가 너무 높으면 쿠팡 AI가 CPC를 너무 낮게 입찰해 노출 경쟁에서 밀립니다. ROAS를 낮춰 입찰가를 높여야 합니다.', tab: 'adjust', tabLabel: 'ROAS 조정 탭' },
+        { title: '일일 예산 확인', desc: '예산이 너무 낮으면 하루 일찍 소진되거나 AI가 보수적으로 운영합니다. 신규는 최소 5만원/일 이상 권장.', tab: null },
+        { title: '상품 상태 점검', desc: '재고 소진·상품 오류·검색 제외 키워드 여부 확인. 상품 자체가 광고 대상에서 빠진 경우도 있음.', tab: null },
+        { title: '100클릭 목표로 ROAS 낮춰 재투입', desc: '일단 돌게 만드는 게 우선. 최소 ROAS 계산 후 × 1.5배 수준부터 시작해 클릭이 들어오는 ROAS를 찾아가세요.', tab: 'roas', tabLabel: '최소 ROAS 탭' },
+      ],
+      warn: '⚠️ 광고가 돌지 않으면 데이터도 안 쌓입니다. 수익보다 "일단 클릭을 받는 것"이 먼저입니다.',
+      tip: null,
+    },
+    priceup: {
+      label: '💰 판매가를 올린 후 재세팅이 필요해요',
+      steps: [
+        { title: '새 판매가 기준으로 이익금 재계산', desc: '가격이 올랐으므로 개당 이익금도 달라집니다. 원가·수수료 제외 후 실제 이익금 확인.', tab: null },
+        { title: '최소 ROAS 재계산', desc: '새 정상가와 새 이익금으로 최소 ROAS를 다시 계산하세요.', tab: 'roas', tabLabel: '최소 ROAS 탭' },
+        { title: 'CPC 한계가격 재계산', desc: '이익금이 늘었으므로 허용 CPC도 올라갑니다. 새 전환율로 재계산.', tab: 'cpc', tabLabel: 'CPC 한계가격 탭' },
+        { title: '1대1 법칙으로 새 기준점 확인', desc: '가격 인상 후 광고 건강도를 다시 체크해 최적 광고비 수준 재설정.', tab: 'ratio', tabLabel: '1대1 법칙 탭' },
+      ],
+      warn: null,
+      tip: '✅ 판매가 올리면 전환율이 낮아질 수 있음. 새 전환율 데이터가 100클릭 이상 쌓인 후 재계산 권장.',
+    },
+  };
+
+  function selectSituation(key) {
+    const s = situations[key];
+
+    // 상황 전환 시 3번째 패널 닫기
+    closeHomeCalc();
+
+    // 왼쪽 버튼 active 상태
+    document.querySelectorAll('.situation-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('sit-' + key).classList.add('active');
+
+    // 첫 선택 시 분할 레이아웃으로 전환
+    const leftEl = document.getElementById('home-left');
+    const rightEl = document.getElementById('home-right');
+    leftEl.classList.add('split');
+    rightEl.classList.add('show');
+
+    // 오른쪽 내용 빌드
+    let html = '<div class="road-card">';
+    html += `<div class="road-header"><div class="road-header-title">${s.label}</div><div class="road-header-desc">아래 순서대로 확인하세요.</div></div>`;
+
+    s.steps.forEach((step, i) => {
+      html += `<div class="road-step">
+        <div class="road-num">${i + 1}</div>
+        <div class="road-step-body">
+          <div class="road-step-title">${step.title}</div>
+          <div class="road-step-desc">${step.desc}</div>
+          ${step.tab ? `<span class="road-tab-badge" onclick="openHomeCalc('${step.tab}','${step.tabLabel}')">${step.tabLabel} →</span>` : ''}
+        </div>
+      </div>`;
+    });
+
+    if (s.warn) html += `<div class="road-warn">${s.warn}</div>`;
+    if (s.tip)  html += `<div class="road-tip">${s.tip}</div>`;
+    html += '</div>';
+
+    document.getElementById('home-right-empty').style.display = 'none';
+    const rc = document.getElementById('result-content');
+    rc.style.display = 'block';
+    rc.innerHTML = html;
+  }
+
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    if (btn) btn.classList.add('active');
+    if (name !== 'home') closeHomeCalc();
+  }
+
+  // 홈탭 3컬럼 계산기 패널
+  function openHomeCalc(tabName, label) {
+    const tabEl = document.getElementById('tab-' + tabName);
+    if (!tabEl) return;
+
+    const contentEl = tabEl.querySelector('.content');
+    const body = document.getElementById('home-calc-body');
+    const titleEl = document.getElementById('home-calc-title');
+
+    titleEl.textContent = label || tabName;
+    body.innerHTML = contentEl ? contentEl.innerHTML : tabEl.innerHTML;
+
+    document.getElementById('home-split').classList.add('tri');
+
+    // active badge 표시
+    document.querySelectorAll('.road-tab-badge').forEach(b => b.classList.remove('active'));
+    event && event.target && event.target.classList.add('active');
+  }
+
+  function closeHomeCalc() {
+    document.getElementById('home-split').classList.remove('tri');
+    setTimeout(() => {
+      document.getElementById('home-calc-body').innerHTML = '';
+    }, 360);
+  }
+
+  function switchTabByBadge(name) {
+    const btns = document.querySelectorAll('.tab-btn');
+    const map = { home:0, guide:1, roas:2, cpc:3, ratio:4, adjust:5, algo:6 };
+    switchTab(name, btns[map[name]]);
+  }
+
+  function toggleGuide(id) {
+    const body = document.getElementById(id);
+    const chevron = document.getElementById('chevron-' + id);
+    const isOpen = body.classList.contains('open');
+    body.classList.toggle('open', !isOpen);
+    chevron.classList.toggle('open', !isOpen);
+  }
+
+  // ── 랭킹 분석기 ──
+  let rankerCount = 0;
+  const MEDALS = ['🥇', '🥈', '🥉', '4위', '5위'];
+  const METRIC_LABELS = {
+    cpc: 'CPC (입찰단가)',
+    ctr: '클릭률',
+    cvr: '전환율',
+    price: '판매가',
+    quality: '품질점수'
+  };
+
+  function addRankerRow() {
+    const rows = document.getElementById('ranker-rows');
+    if (rows.children.length >= 5) return;
+    rankerCount++;
+    const name = String.fromCharCode(64 + rankerCount); // A, B, C...
+    const div = document.createElement('div');
+    div.id = 'ranker-row-' + rankerCount;
+    div.style.cssText = 'background:#f5f5f7;border-radius:10px;padding:12px;margin-bottom:8px;';
+    div.innerHTML = `
+      <div style="font-size:12px;font-weight:700;color:#1d1d1f;margin-bottom:8px;">업체 ${name}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div>
+          <div style="font-size:10px;color:#888;margin-bottom:3px;">CPC (원)</div>
+          <input type="number" id="r${rankerCount}-cpc" placeholder="예: 800" style="width:100%;padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:6px;font-size:13px;background:#fff;">
+        </div>
+        <div>
+          <div style="font-size:10px;color:#888;margin-bottom:3px;">클릭률 (%)</div>
+          <input type="number" id="r${rankerCount}-ctr" placeholder="예: 3.5" step="0.1" style="width:100%;padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:6px;font-size:13px;background:#fff;">
+        </div>
+        <div>
+          <div style="font-size:10px;color:#888;margin-bottom:3px;">전환율 (%)</div>
+          <input type="number" id="r${rankerCount}-cvr" placeholder="예: 8" step="0.1" style="width:100%;padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:6px;font-size:13px;background:#fff;">
+        </div>
+        <div>
+          <div style="font-size:10px;color:#888;margin-bottom:3px;">판매가 (원)</div>
+          <input type="number" id="r${rankerCount}-price" placeholder="예: 25000" style="width:100%;padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:6px;font-size:13px;background:#fff;">
+        </div>
+        <div style="grid-column:span 2;">
+          <div style="font-size:10px;color:#888;margin-bottom:3px;">품질점수 (1~10)</div>
+          <input type="number" id="r${rankerCount}-quality" placeholder="예: 7" min="1" max="10" style="width:100%;padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:6px;font-size:13px;background:#fff;">
+        </div>
+      </div>`;
+    rows.appendChild(div);
+  }
+
+  function calcRanking() {
+    const rows = document.getElementById('ranker-rows').children;
+    if (rows.length < 2) { alert('업체를 2개 이상 추가해주세요.'); return; }
+
+    const businesses = [];
+    for (let i = 1; i <= rankerCount; i++) {
+      const el = document.getElementById('ranker-row-' + i);
+      if (!el) continue;
+      const cpc   = parseFloat(document.getElementById('r'+i+'-cpc').value) || 0;
+      const ctr   = parseFloat(document.getElementById('r'+i+'-ctr').value) || 0;
+      const cvr   = parseFloat(document.getElementById('r'+i+'-cvr').value) || 0;
+      const price = parseFloat(document.getElementById('r'+i+'-price').value) || 0;
+      const qual  = parseFloat(document.getElementById('r'+i+'-quality').value) || 0;
+      const name  = String.fromCharCode(64 + businesses.length + 1);
+      businesses.push({ name, cpc, ctr, cvr, price, quality: qual });
+    }
+
+    // 항목별 순위
+    const metrics = ['cpc','ctr','cvr','price','quality'];
+    const metricRanks = {};
+    metrics.forEach(m => {
+      const sorted = [...businesses].sort((a,b) => b[m] - a[m]);
+      metricRanks[m] = sorted.map(b => b.name);
+    });
+
+    // 종합 점수: CTR × (CPC + 판매가×0.1×CVR/100) × (품질/5)
+    businesses.forEach(b => {
+      b.score = (b.ctr/100) * (b.cpc + b.price * 0.1 * (b.cvr/100)) * (b.quality > 0 ? b.quality/5 : 1);
+    });
+    const totalSorted = [...businesses].sort((a,b) => b.score - a.score);
+
+    // 항목별 결과 렌더
+    const mRows = document.getElementById('ranker-metric-rows');
+    mRows.innerHTML = '';
+    metrics.forEach(m => {
+      const ranks = metricRanks[m];
+      let html = `<div style="background:#fff;border-radius:8px;padding:9px 12px;font-size:12px;">
+        <b style="color:#555;">${METRIC_LABELS[m]}</b>
+        <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;">`;
+      ranks.forEach((name, i) => {
+        const biz = businesses.find(b => b.name === name);
+        const val = m === 'cpc' ? biz[m].toLocaleString()+'원'
+                  : m === 'price' ? biz[m].toLocaleString()+'원'
+                  : m === 'quality' ? biz[m]+'점'
+                  : biz[m]+'%';
+        html += `<span style="background:${i===0?'#fff8e6':i===1?'#f5f5f7':'#f5f5f7'};border-radius:6px;padding:3px 8px;color:${i===0?'#a07800':'#555'};">
+          ${MEDALS[i]} 업체${name} <span style="font-size:10px;color:#aaa;">${val}</span></span>`;
+      });
+      html += '</div></div>';
+      mRows.innerHTML += html;
+    });
+
+    // 종합 순위 렌더
+    const tRows = document.getElementById('ranker-total-rows');
+    tRows.innerHTML = '';
+    const maxScore = totalSorted[0].score || 1;
+    totalSorted.forEach((b, i) => {
+      const pct = maxScore > 0 ? Math.round((b.score / maxScore) * 100) : 0;
+      tRows.innerHTML += `
+        <div style="background:#fff;border-radius:8px;padding:10px 12px;font-size:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <span><b>${MEDALS[i]} 업체 ${b.name}</b></span>
+            <span style="font-size:11px;color:#888;">기여 지수 ${pct}%</span>
+          </div>
+          <div style="height:6px;background:#f0f0f0;border-radius:3px;">
+            <div style="height:6px;width:${pct}%;background:${i===0?'#E64040':i===1?'#2a5bd7':'#aaa'};border-radius:3px;transition:width 0.5s;"></div>
+          </div>
+        </div>`;
+    });
+
+    document.getElementById('ranker-result').style.display = 'block';
+  }
+
+  // 페이지 로드 시 업체 2개 기본 추가
+  addRankerRow(); addRankerRow();
+
+  // ── 가이드/알고리즘 인라인 패널 ──
+  const _panelMoved = {}; // DOM 이동 복원용
+
+  function openPanel(id) {
+    const body = document.getElementById(id);
+    if (!body) return;
+
+    const card    = body.closest('.guide-card');
+    const iconEl  = card ? card.querySelector('.guide-icon') : null;
+    const titleEl = card ? card.querySelector('.guide-toggle-title') : null;
+
+    // 어느 탭인지 판별
+    const isGuide = document.getElementById('tab-guide').contains(body);
+    const prefix  = isGuide ? 'guide' : 'algo';
+
+    const splitLeft = document.getElementById(prefix + '-split-left');
+    const splitRight= document.getElementById(prefix + '-split-right');
+    const emptyEl   = document.getElementById(prefix + '-right-empty');
+    const headerEl  = document.getElementById(prefix + '-detail-header');
+    const bodyOut   = document.getElementById(prefix + '-detail-body');
+
+    // active 카드 표시
+    splitLeft.querySelectorAll('.guide-card').forEach(c => c.classList.remove('gc-active'));
+    if (card) card.classList.add('gc-active');
+
+    // 헤더 채우기
+    document.getElementById(prefix + '-detail-icon').textContent  = iconEl  ? iconEl.textContent  : '';
+    document.getElementById(prefix + '-detail-title').textContent = titleEl ? titleEl.textContent : '';
+
+    // 내용: 인터랙티브 컨텐츠(id 포함)는 DOM 이동, 나머지는 innerHTML 복사
+    bodyOut.innerHTML = '';
+    const hasInteractiveIds = body.querySelector('[id]');
+    if (hasInteractiveIds) {
+      _panelMoved[prefix] = { node: body, parent: body.parentNode, next: body.nextSibling };
+      body.style.display = 'block';
+      bodyOut.appendChild(body);
+    } else {
+      bodyOut.innerHTML = body.innerHTML;
+    }
+
+    emptyEl.style.display  = 'none';
+    headerEl.style.display = 'flex';
+    splitLeft.classList.add('split');
+    splitRight.classList.add('show');
+  }
+
+  function closeGuidePanel(prefix) {
+    const splitLeft = document.getElementById(prefix + '-split-left');
+    const splitRight= document.getElementById(prefix + '-split-right');
+    const emptyEl   = document.getElementById(prefix + '-right-empty');
+    const headerEl  = document.getElementById(prefix + '-detail-header');
+    const bodyOut   = document.getElementById(prefix + '-detail-body');
+
+    // DOM 이동된 노드 원래 자리로 복원
+    if (_panelMoved[prefix]) {
+      const { node, parent, next } = _panelMoved[prefix];
+      node.style.display = '';
+      next ? parent.insertBefore(node, next) : parent.appendChild(node);
+      delete _panelMoved[prefix];
+    }
+
+    splitLeft.classList.remove('split');
+    splitRight.classList.remove('show');
+    splitLeft.querySelectorAll('.guide-card').forEach(c => c.classList.remove('gc-active'));
+    bodyOut.innerHTML = '';
+
+    setTimeout(() => {
+      emptyEl.style.display  = '';
+      headerEl.style.display = 'none';
+    }, 360);
+  }
+
+  // ESC 키로 닫기
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      closeGuidePanel('guide');
+      closeGuidePanel('algo');
+    }
+  });
+
+  function fmt(n) {
+    return Math.round(n).toLocaleString('ko-KR');
+  }
+
+  // TAB 1: 최소 ROAS
+  function calcROAS() {
+    const normalPrice = parseFloat(document.getElementById('roas-normal-price').value);
+    const salePrice = parseFloat(document.getElementById('roas-sale-price').value);
+    const profit = parseFloat(document.getElementById('roas-profit').value);
+
+    if (!normalPrice || !profit) {
+      alert('정상가와 이익금을 입력해주세요.');
+      return;
+    }
+
+    const minROAS = (normalPrice / profit) * 110;
+    const initROAS = minROAS * 1.5;
+
+    document.getElementById('roas-min').textContent = fmt(minROAS) + '%';
+    document.getElementById('roas-init').textContent = fmt(initROAS) + '%';
+    document.getElementById('roas-input-val').textContent =
+      '광고 세팅에 ' + fmt(initROAS) + '% 입력';
+
+    document.getElementById('roas-result').classList.add('show');
+
+    // tip
+    const sp = salePrice || normalPrice;
+    document.getElementById('tip-sale').textContent = fmt(sp) + '원';
+    document.getElementById('tip-normal').textContent = fmt(normalPrice) + '원(정상가)';
+    document.getElementById('tip-init').textContent = fmt(initROAS) + '%';
+    document.getElementById('roas-tip').style.display = 'block';
+  }
+
+  // TAB 2: CPC 한계가격
+  function calcCPC() {
+    const profit = parseFloat(document.getElementById('cpc-profit').value);
+    const cvr = parseFloat(document.getElementById('cpc-cvr').value);
+
+    if (!profit || !cvr) {
+      alert('수익과 전환율을 입력해주세요.');
+      return;
+    }
+
+    const maxCPC = profit * (cvr / 100);
+
+    document.getElementById('cpc-max').textContent = fmt(maxCPC) + '원';
+    document.getElementById('cpc-result').classList.add('show');
+    document.getElementById('cpc-tip').style.display = 'block';
+  }
+
+  // TAB 4: ROAS 조정
+  function calcAdjust() {
+    const roas = parseFloat(document.getElementById('adjust-roas').value);
+    if (!roas) { alert('현재 목표 ROAS를 입력해주세요.'); return; }
+
+    document.getElementById('adjust-down10').textContent = Math.round(roas * 0.9) + '%';
+    document.getElementById('adjust-down5').textContent  = Math.round(roas * 0.95) + '%';
+    document.getElementById('adjust-current').textContent = Math.round(roas) + '%';
+    document.getElementById('adjust-up5').textContent   = Math.round(roas * 1.05) + '%';
+    document.getElementById('adjust-up10').textContent  = Math.round(roas * 1.1) + '%';
+    document.getElementById('adjust-up20').textContent  = Math.round(roas * 1.2) + '%';
+
+    document.getElementById('adjust-result').classList.add('show');
+    document.getElementById('adjust-tip').style.display = 'block';
+  }
+
+  // TAB 3: 1대1 법칙
+  function calcRatio() {
+    const adCost = parseFloat(document.getElementById('ratio-adcost').value);
+    const margin = parseFloat(document.getElementById('ratio-margin').value);
+
+    if (!adCost || !margin) {
+      alert('광고비와 이익금을 입력해주세요.');
+      return;
+    }
+
+    const netProfit = margin - adCost;
+    const rate = netProfit / adCost;
+
+    document.getElementById('ratio-net').textContent = fmt(netProfit) + '원';
+    document.getElementById('ratio-net').className = 'result-value ' + (netProfit >= 0 ? 'green' : 'red');
+
+    document.getElementById('ratio-rate').textContent = rate.toFixed(2) + ' : 1';
+
+    let status, action, badgeClass;
+    if (rate >= 0.9 && rate <= 1.1) {
+      status = '최적 (1:1)';
+      badgeClass = 'badge-green';
+      action = '유지';
+    } else if (rate > 1.1) {
+      status = '여유 (순익 > 광고비)';
+      badgeClass = 'badge-green';
+      action = '광고비 증액 검토 → 절대 순익 금액 확인하며 점진적으로';
+    } else if (rate >= 0.5) {
+      status = '과투자';
+      badgeClass = 'badge-orange';
+      action = '광고비 ~30% 절감 → CPC 낮추기';
+    } else {
+      status = '심각한 과투자';
+      badgeClass = 'badge-red';
+      action = '광고비 즉시 절감 필요 · 전략 재검토';
+    }
+
+    document.getElementById('ratio-status').innerHTML =
+      '<span class="status-badge ' + badgeClass + '">' + status + '</span>';
+    document.getElementById('ratio-action').textContent = action;
+
+    document.getElementById('ratio-result').classList.add('show');
+  }
+</script>
+</body>
+</html>
