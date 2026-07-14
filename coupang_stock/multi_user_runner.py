@@ -15,11 +15,14 @@
 import sys
 import os
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
-sys.path.append(os.path.expanduser('~/Documents/claude_skills/sheet_manager'))
-sys.path.append(os.path.expanduser('~/Documents/claude_skills/coupang_stock'))
-sys.path.append(os.path.expanduser('~/Documents/github_cloud/module_auth'))
+# NOTE(2026-06-22 자가복구): 구 경로 ~/Documents/{github_cloud,claude_skills} 는
+# 클라우드 동기화 마운트가 stall되면 import 시 os.listdir 에서 영구 블록 → launchd 타임아웃(exit=142).
+# 현재 로컬 경로로 교정 (스킬 경로표 기준). PYTHONPATH 와 동일 위치.
+sys.path.append(os.path.expanduser('~/claude_skills/sheet_manager'))
+sys.path.append(os.path.expanduser('~/claude_skills/coupang_stock'))
+sys.path.append(os.path.expanduser('~/github/api_key'))
 
 import auth
 import sheet_manager as sm
@@ -327,7 +330,17 @@ def main():
     print(f"✅ {len(stock_results)}/{len(all_vids)}개 조회 완료\n")
 
     # ── 4. 각 유저 시트에 기록 ──────────────────────────────────
-    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    # ★자가복구/지연기록 헤더 날짜 보정(현빈 2026-07-15): 야간 재고잡은 '그날 밤' 슬롯이다.
+    #   정규 실행은 23:5x라 당일로 찍히지만, 실패 후 자가복구가 자정을 넘겨(00:xx~새벽) 다시 찍으면
+    #   원래 놓친 '전날 밤' 슬롯인데도 '오늘'로 찍혀 → 그날 밤 정규열과 같은 날짜로 겹침.
+    #   해결: 이른새벽(hour<6)에 찍히는 건 전날 23:59:59로 고정 → 놓친 날 슬롯에 제자리, 겹침 없음.
+    _now = datetime.now()
+    if _now.hour < 6:
+        _slot = (_now - timedelta(days=1)).replace(hour=23, minute=59, second=59, microsecond=0)
+        now_str = _slot.strftime('%Y-%m-%d %H:%M:%S')
+        print(f"⏱️  자정 넘어 기록(자가복구 추정) → 헤더 날짜를 전날 슬롯 {now_str} 로 고정")
+    else:
+        now_str = _now.strftime('%Y-%m-%d %H:%M:%S')
 
     for user in users:
         row_vid = user_row_vid.get(user['user_name'], {})
