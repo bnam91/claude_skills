@@ -354,6 +354,70 @@ def cmd_trash_mail(args):
     print(f"[완료] {len(ids)}개 메일을 휴지통으로 이동했어요.")
 
 
+def get_or_create_label(service, name):
+    """라벨 이름으로 labelId 반환, 없으면 생성. 중첩 라벨은 '/' 구분(예: 계산서/2026상반기)."""
+    existing = service.users().labels().list(userId="me").execute().get("labels", [])
+    for lb in existing:
+        if lb["name"] == name:
+            return lb["id"]
+    created = service.users().labels().create(
+        userId="me",
+        body={"name": name, "labelListVisibility": "labelShow", "messageListVisibility": "show"},
+    ).execute()
+    return created["id"]
+
+
+def cmd_list_labels(args):
+    if not args.account:
+        print("[오류] --account 가 필요해요.")
+        exit(1)
+    email = resolve_account(args.account)
+    service = get_service(email)
+    labels = service.users().labels().list(userId="me").execute().get("labels", [])
+    user_labels = [l for l in labels if l.get("type") == "user"]
+    print(f"[{args.account}] 사용자 라벨 {len(user_labels)}개")
+    for l in sorted(user_labels, key=lambda x: x["name"]):
+        print(f"  - {l['name']}  ({l['id']})")
+
+
+def cmd_create_label(args):
+    if not args.account or not args.label_name:
+        print("[오류] --account, --label-name 이 필요해요.")
+        exit(1)
+    email = resolve_account(args.account)
+    service = get_service(email)
+    lid = get_or_create_label(service, args.label_name)
+    print(f"[라벨 준비완료] {args.label_name}  ({lid})")
+
+
+def cmd_add_label(args):
+    if not args.account or not args.label_name:
+        print("[오류] --account, --label-name 이 필요해요.")
+        exit(1)
+    ids = []
+    if args.ids:
+        ids = [i.strip() for i in args.ids.split(",") if i.strip()]
+    elif args.id:
+        ids = [args.id]
+    else:
+        print("[오류] --id 또는 --ids 가 필요해요.")
+        exit(1)
+    email = resolve_account(args.account)
+    service = get_service(email)
+    lid = get_or_create_label(service, args.label_name)
+    ok = 0
+    for msg_id in ids:
+        try:
+            service.users().messages().modify(
+                userId="me", id=msg_id, body={"addLabelIds": [lid]}
+            ).execute()
+            print(f"  [라벨+] {msg_id}")
+            ok += 1
+        except Exception as e:
+            print(f"  [실패] {msg_id}: {e}")
+    print(f"[완료] '{args.label_name}' 라벨을 {ok}/{len(ids)}개 메일에 부착했어요.")
+
+
 def cmd_send_mail(args):
     if not args.account or not args.to or not args.subject or not args.body:
         print("[오류] --account, --to, --subject, --body 가 모두 필요해요.")
@@ -426,6 +490,9 @@ def main():
     group.add_argument("--send-mail", action="store_true", help="메일 발송")
     group.add_argument("--save-draft", action="store_true", help="임시저장")
     group.add_argument("--trash-mail", action="store_true", help="휴지통 이동")
+    group.add_argument("--list-labels", action="store_true", help="라벨 목록")
+    group.add_argument("--create-label", action="store_true", help="라벨 생성")
+    group.add_argument("--add-label", action="store_true", help="메일에 라벨 부착")
 
     parser.add_argument("--alias", help="계정 별칭")
     parser.add_argument("--email", help="이메일 주소")
@@ -439,6 +506,7 @@ def main():
     parser.add_argument("--subject", help="메일 제목")
     parser.add_argument("--body", help="메일 본문")
     parser.add_argument("--attach", help="첨부파일 경로 (쉼표로 구분, 예: a.pdf,b.jpg)")
+    parser.add_argument("--label-name", help="라벨 이름 (중첩은 / 구분, 예: 계산서/2026상반기)")
 
     args = parser.parse_args()
 
@@ -458,6 +526,12 @@ def main():
         cmd_save_draft(args)
     elif args.trash_mail:
         cmd_trash_mail(args)
+    elif args.list_labels:
+        cmd_list_labels(args)
+    elif args.create_label:
+        cmd_create_label(args)
+    elif args.add_label:
+        cmd_add_label(args)
 
 
 if __name__ == "__main__":
